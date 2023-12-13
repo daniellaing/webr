@@ -16,6 +16,8 @@
             rust-analyzer
             rustfmt
             clippy
+
+            prettierd
           ];
 
           shellHook = ''
