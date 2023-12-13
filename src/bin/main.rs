@@ -13,7 +13,7 @@ fn main() -> Result<()> {
     let f = create_footer("contact@daniellaing.com", socials);
     println!("{f}");
 
-    let page = get_page();
+    let page = get_page(String::from("Test page"));
     println!("{page}");
 
     Ok(())

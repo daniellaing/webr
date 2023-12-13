@@ -15,8 +15,8 @@ pub fn init() -> Result<()> {
     Ok(())
 }
 
-pub fn get_page() -> String {
-    utils::html::get_page().to_string()
+pub fn get_page(title: String) -> String {
+    utils::html::get_page(title).to_string()
 }
 
 pub fn create_footer<A, S>(email: S, items: A) -> Footer
