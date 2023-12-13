@@ -1,4 +1,11 @@
-use html::content::Footer;
+use html::{
+    content::{Footer, Header},
+    root::Html,
+};
+
+pub fn get_page() -> Html {
+    Html::builder().build()
+}
 
 pub fn footer<A, S>(email: S, items: A) -> Footer
 where

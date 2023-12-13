@@ -1,6 +1,6 @@
 #![recursion_limit = "512"]
 
-use webr::{create_footer, init, prelude::*};
+use webr::{create_footer, get_page, init, prelude::*};
 
 fn main() -> Result<()> {
     init()?;
@@ -12,6 +12,9 @@ fn main() -> Result<()> {
     ];
     let f = create_footer("contact@daniellaing.com", socials);
     println!("{f}");
+
+    let page = get_page();
+    println!("{page}");
 
     Ok(())
 }
