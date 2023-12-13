@@ -1,0 +1,8 @@
+debug/
+target/
+
+# Backups made by rustfmt
+**/*.rs.bk
+
+# Direnv
+.direnv
