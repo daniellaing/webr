@@ -16,6 +16,7 @@
             rust-analyzer
             rustfmt
             clippy
+            cargo-watch
 
             prettierd
           ];
