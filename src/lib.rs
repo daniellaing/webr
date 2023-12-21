@@ -12,13 +12,24 @@ use axum::{
     Router,
 };
 use pulldown_cmark::{html, Parser};
+use pulldown_cmark_frontmatter::FrontmatterExtractor;
+use serde::Deserialize;
 use std::{collections::HashMap, fs, path::PathBuf};
 use tokio::net::TcpListener;
+use toml::value::Datetime;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub root: PathBuf,
     pub md_options: Options,
+}
+
+#[derive(Debug, Deserialize)]
+struct Metadata {
+    title: String,
+    created: Datetime,
+    modified: Datetime,
+    tags: Vec<String>,
 }
 
 pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
@@ -46,10 +57,19 @@ async fn get_page(
     Path(path): Path<PathBuf>,
 ) -> Result<Html<String>> {
     let path = state.root.join(&path);
-    let md = fs::read_to_string(&path).map_err(|e| Error::IO(e))?;
-    let parser = Parser::new_ext(&md, state.md_options);
+    let md = fs::read_to_string(&path)?;
+    let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
-    html::push_html(&mut content, parser);
+    html::push_html(&mut content, &mut extractor);
 
-    Ok(Html(content))
+    let metadata: Metadata = toml::from_str(
+        &extractor
+            .frontmatter
+            .ok_or(Error::Generic(String::from("No frontmatter found")))?
+            .code_block
+            .ok_or(Error::Generic(String::from("No codeblock found")))?
+            .source,
+    )?;
+
+    Ok(Html(format!("{content}\n\n{metadata:?}")))
 }

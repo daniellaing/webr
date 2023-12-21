@@ -8,6 +8,9 @@ pub enum Error {
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
+
+    #[error(transparent)]
+    TOML(#[from] toml::de::Error),
 }
 
 impl IntoResponse for Error {

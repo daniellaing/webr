@@ -20,6 +20,9 @@ log = "0.4"
 axum = { version = "0.7.2", features = ["macros"] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
 pulldown-cmark = "0.9.3"
+pulldown-cmark-frontmatter = "0.2.0"
+toml = "0.8.8"
+serde = { version = "1.0.193", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = "1"
