@@ -5,7 +5,12 @@ pub mod prelude;
 mod utils;
 
 use crate::prelude::*;
-use axum::{extract::State, response::IntoResponse, routing::get, Router};
+use axum::{
+    extract::{Path, State},
+    response::IntoResponse,
+    routing::get,
+    Router,
+};
 use std::{collections::HashMap, path::PathBuf};
 use tokio::net::TcpListener;
 
@@ -24,9 +29,20 @@ pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
 }
 
 async fn init_router(state: AppState) -> Router {
-    Router::new().route("/", get(get_page)).with_state(state)
+    Router::new()
+        .route("/", get(get_root))
+        .route("/*path", get(get_page))
+        .with_state(state)
 }
 
-async fn get_page(State(state): State<AppState>) -> String {
-    format!("Content root: {}", state.root.display())
+async fn get_root(state: State<AppState>) -> String {
+    get_page(state, Path(PathBuf::new())).await
+}
+
+async fn get_page(State(state): State<AppState>, Path(path): Path<PathBuf>) -> String {
+    format!(
+        "Content root: {}\nPath: {}",
+        state.root.display(),
+        path.display()
+    )
 }

@@ -17,7 +17,7 @@ path = "src/bin/main.rs"
 thiserror = "1"
 env_logger = "0.10"
 log = "0.4"
-axum = "0.7.2"
+axum = { version = "0.7.2", features = ["macros"] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
