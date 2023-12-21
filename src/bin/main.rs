@@ -1,6 +1,4 @@
-#![recursion_limit = "512"]
-
-use webr::{create_footer, get_page, init, prelude::*};
+use webr::{get_page, init, prelude::*};
 
 fn main() -> Result<()> {
     init()?;
