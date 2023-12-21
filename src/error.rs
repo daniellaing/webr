@@ -11,6 +11,9 @@ pub enum Error {
 
     #[error(transparent)]
     TOML(#[from] toml::de::Error),
+
+    #[error(transparent)]
+    Askama(#[from] askama::Error),
 }
 
 impl IntoResponse for Error {

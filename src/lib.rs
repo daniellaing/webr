@@ -5,6 +5,7 @@ pub mod prelude;
 mod utils;
 
 use crate::prelude::*;
+use askama::Template;
 use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse},
@@ -30,6 +31,13 @@ struct Metadata {
     created: Datetime,
     modified: Datetime,
     tags: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "page.html")]
+struct PageTemplate<'a> {
+    title: &'a str,
+    content: String,
 }
 
 pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
@@ -71,5 +79,9 @@ async fn get_page(
             .source,
     )?;
 
-    Ok(Html(format!("{content}\n\n{metadata:?}")))
+    let page = PageTemplate {
+        title: &metadata.title,
+        content: format!("{content}\n\n{metadata:?}"),
+    };
+    Ok(Html(page.render()?))
 }
