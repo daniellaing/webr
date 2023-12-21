@@ -37,21 +37,19 @@ async fn init_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn get_root(state: State<AppState>) -> impl IntoResponse {
+async fn get_root(state: State<AppState>) -> Result<Html<String>> {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(State(state): State<AppState>, Path(path): Path<PathBuf>) -> Result<String> {
+async fn get_page(
+    State(state): State<AppState>,
+    Path(path): Path<PathBuf>,
+) -> Result<Html<String>> {
     let path = state.root.join(&path);
-    let md = fs::read_to_string(&path)?;
+    let md = fs::read_to_string(&path).map_err(|e| Error::IO(e))?;
     let parser = Parser::new_ext(&md, state.md_options);
     let mut content = String::new();
     html::push_html(&mut content, parser);
 
-    Ok(format!(
-        "Content root: {}\nPath: {}\nContent:\n\n{}",
-        state.root.display(),
-        path.display(),
-        content
-    ))
+    Ok(Html(content))
 }
