@@ -11,7 +11,7 @@ use axum::{
     routing::get,
     Router,
 };
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, fs, path::PathBuf};
 use tokio::net::TcpListener;
 
 #[derive(Debug, Clone)]
@@ -35,14 +35,18 @@ async fn init_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn get_root(state: State<AppState>) -> String {
+async fn get_root(state: State<AppState>) -> Result<String> {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(State(state): State<AppState>, Path(path): Path<PathBuf>) -> String {
-    format!(
-        "Content root: {}\nPath: {}",
+async fn get_page(State(state): State<AppState>, Path(path): Path<PathBuf>) -> Result<String> {
+    let path = state.root.join(&path);
+    let f = fs::read_to_string(&path)?;
+
+    Ok(format!(
+        "Content root: {}\nPath: {}\nContents:\n\n{}",
         state.root.display(),
-        path.display()
-    )
+        path.display(),
+        f
+    ))
 }
