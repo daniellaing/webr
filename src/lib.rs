@@ -7,16 +7,18 @@ mod utils;
 use crate::prelude::*;
 use axum::{
     extract::{Path, State},
-    response::IntoResponse,
+    response::{Html, IntoResponse},
     routing::get,
     Router,
 };
+use pulldown_cmark::{html, Parser};
 use std::{collections::HashMap, fs, path::PathBuf};
 use tokio::net::TcpListener;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
     pub root: PathBuf,
+    pub md_options: Options,
 }
 
 pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
@@ -35,18 +37,21 @@ async fn init_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn get_root(state: State<AppState>) -> Result<String> {
+async fn get_root(state: State<AppState>) -> impl IntoResponse {
     get_page(state, Path(PathBuf::new())).await
 }
 
 async fn get_page(State(state): State<AppState>, Path(path): Path<PathBuf>) -> Result<String> {
     let path = state.root.join(&path);
-    let f = fs::read_to_string(&path)?;
+    let md = fs::read_to_string(&path)?;
+    let parser = Parser::new_ext(&md, state.md_options);
+    let mut content = String::new();
+    html::push_html(&mut content, parser);
 
     Ok(format!(
-        "Content root: {}\nPath: {}\nContents:\n\n{}",
+        "Content root: {}\nPath: {}\nContent:\n\n{}",
         state.root.display(),
         path.display(),
-        f
+        content
     ))
 }
