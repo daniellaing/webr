@@ -1,6 +1,9 @@
-use crate::{prelude::*, Metadata};
+use crate::{prelude::*, utils::PathBufExt, Metadata};
 use askama::Template;
-use axum::{extract::State, response::Html};
+use axum::{
+    extract::State,
+    response::{Html, IntoResponse, Response},
+};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{fmt::Write, fs::read_dir, path::PathBuf};
@@ -12,7 +15,7 @@ struct PageTemplate {
     content: String,
 }
 
-pub fn render_markdown(State(state): State<AppState>, md: String) -> Result<Html<String>> {
+pub fn render_markdown(State(state): State<AppState>, md: String) -> Result<Response> {
     let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
     pulldown_cmark::html::push_html(&mut content, &mut extractor);
@@ -30,29 +33,42 @@ pub fn render_markdown(State(state): State<AppState>, md: String) -> Result<Html
         title: metadata.title,
         content,
     };
-    Ok(Html(page.render()?))
+    Ok(Html(page.render()?).into_response())
 }
 
-pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Html<String>> {
-    dbg!(&path);
-
+pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
     let mut output = Vec::<String>::new();
-    for entry in read_dir(state.root.join(&path))?.filter_map(|e| e.ok()) {
+    // Filter out only valid files
+    for entry in read_dir(state.root.join(&path))?
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            if let Some(ext) = e.path().extension() {
+                ext == "md"
+            } else {
+                e.file_type().ok().map(|e| e.is_dir()).unwrap_or(false)
+            }
+        })
+    {
         let fname: PathBuf = entry
             .path()
             .file_name()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
             .into();
-        let display = fname
-            .file_stem()
+        let display = entry
+            .path()
+            .file_root()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
-            .to_str()
-            .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?;
+            .to_string();
         output.push(format!(
-            r#"<a href="/{}">{display}</a>"#,
+            r#"<li><a href="/{}">{display}</a></li>"#,
             path.join(&fname).display()
         ));
     }
 
-    Ok(Html(output.join("\n")))
+    let title = path.file_root().unwrap_or("Daniel's Website").to_string();
+    let page = PageTemplate {
+        title,
+        content: format!("<ul>{}</ul>", output.join("\n")),
+    };
+    Ok(Html(page.render()?).into_response())
 }

@@ -8,6 +8,7 @@ mod utils;
 use crate::prelude::*;
 use askama::Template;
 use axum::{
+    body::Body,
     extract::{Path, State},
     http::{Request, Uri},
     response::{Html, IntoResponse, Response},
@@ -18,8 +19,9 @@ use axum::{
 use pulldown_cmark::{html, Parser};
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use serde::Deserialize;
-use std::{collections::HashMap, convert::Infallible, fs, path::PathBuf};
-use tokio::net::TcpListener;
+use std::{boxed, collections::HashMap, convert::Infallible, fs, path::PathBuf};
+use tokio::{fs::File, io::AsyncRead, net::TcpListener, task::spawn_blocking};
+use tokio_util::io::ReaderStream;
 use toml::value::Datetime;
 use tower::{util::MapRequestLayer, Layer, Service};
 
@@ -91,15 +93,26 @@ where
     req
 }
 
-async fn get_root(state: State<AppState>) -> Result<Html<String>> {
+async fn get_root(state: State<AppState>) -> Result<impl IntoResponse> {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(state: State<AppState>, Path(path): Path<PathBuf>) -> Result<Html<String>> {
+async fn get_page(state: State<AppState>, Path(path): Path<PathBuf>) -> Result<Response> {
     let fs_path = state.root.join(&path);
+    let ext = path.extension().and_then(std::ffi::OsStr::to_str);
+
     if fs_path.is_dir() {
-        markdown::render_dir(state, path)
+        spawn_blocking(|| markdown::render_dir(state, path)).await?
+    } else if ext == Some("css") {
+        get_css(state, path).await
     } else {
-        markdown::render_markdown(state, fs::read_to_string(fs_path)?)
+        spawn_blocking(|| markdown::render_markdown(state, fs::read_to_string(fs_path)?)).await?
     }
+}
+
+async fn get_css(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
+    let file = File::open(state.root.join(path)).await?;
+    let body = Body::from_stream(ReaderStream::new(file));
+    let r = Response::builder().body(body)?;
+    Ok(r)
 }

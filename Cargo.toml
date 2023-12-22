@@ -18,13 +18,14 @@ thiserror = "1"
 env_logger = "0.10"
 log = "0.4"
 axum = { version = "0.7.2", features = ["macros"] }
-tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "fs"] }
 pulldown-cmark = "0.9.3"
 pulldown-cmark-frontmatter = "0.2.0"
 toml = "0.8.8"
 serde = { version = "1.0.193", features = ["derive"] }
 askama = "0.12.1"
 tower = "0.4.13"
+tokio-util = { version = "0.7.10", features = ["io"] }
 
 [dev-dependencies]
 anyhow = "1"

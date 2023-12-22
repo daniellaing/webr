@@ -14,6 +14,12 @@ pub enum Error {
 
     #[error(transparent)]
     Askama(#[from] askama::Error),
+
+    #[error(transparent)]
+    TokioJoinError(#[from] tokio::task::JoinError),
+
+    #[error(transparent)]
+    Axum(#[from] axum::http::Error),
 }
 
 impl IntoResponse for Error {
