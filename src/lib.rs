@@ -60,7 +60,7 @@ where
 {
     let uri = req.uri_mut();
     // If no trailing slash, just proceed
-    if !uri.path().ends_with('/') && !uri.path().starts_with("//") {
+    if !uri.path().ends_with('/') && !uri.path().starts_with("//") || uri.path() == "/" {
         return req;
     }
 
