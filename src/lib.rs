@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 pub mod error;
+mod markdown;
 pub mod prelude;
 mod utils;
 
@@ -33,13 +34,6 @@ struct Metadata {
     tags: Vec<String>,
 }
 
-#[derive(Template)]
-#[template(path = "page.html")]
-struct PageTemplate<'a> {
-    title: &'a str,
-    content: String,
-}
-
 pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
     env_logger::init();
     let app = init_router(state).await;
@@ -60,28 +54,11 @@ async fn get_root(state: State<AppState>) -> Result<Html<String>> {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(
-    State(state): State<AppState>,
-    Path(path): Path<PathBuf>,
-) -> Result<Html<String>> {
-    let path = state.root.join(&path);
-    let md = fs::read_to_string(&path)?;
-    let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
-    let mut content = String::new();
-    html::push_html(&mut content, &mut extractor);
-
-    let metadata: Metadata = toml::from_str(
-        &extractor
-            .frontmatter
-            .ok_or(Error::Generic(String::from("No frontmatter found")))?
-            .code_block
-            .ok_or(Error::Generic(String::from("No codeblock found")))?
-            .source,
-    )?;
-
-    let page = PageTemplate {
-        title: &metadata.title,
-        content: format!("{content}\n\n{metadata:?}"),
-    };
-    Ok(Html(page.render()?))
+async fn get_page(state: State<AppState>, Path(path): Path<PathBuf>) -> Result<Html<String>> {
+    let fs_path = state.root.join(&path);
+    if fs_path.is_dir() {
+        markdown::render_dir(state, path)
+    } else {
+        markdown::render_markdown(state, fs::read_to_string(fs_path)?)
+    }
 }
