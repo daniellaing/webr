@@ -49,7 +49,7 @@ pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Html<S
             .to_str()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?;
         output.push(format!(
-            r#"<a href="{}">{display}</a>"#,
+            r#"<a href="/{}">{display}</a>"#,
             path.join(&fname).display()
         ));
     }

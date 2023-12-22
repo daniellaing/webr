@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use webr::{init_app, prelude::*};
+use webr::{prelude::*, start};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -9,7 +9,6 @@ async fn main() -> Result<()> {
         md_options: Options::all(),
     };
 
-    let (listener, app) = init_app(state).await?;
-    axum::serve(listener, app).await?;
+    start(state).await?;
     Ok(())
 }

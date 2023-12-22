@@ -24,6 +24,7 @@ pulldown-cmark-frontmatter = "0.2.0"
 toml = "0.8.8"
 serde = { version = "1.0.193", features = ["derive"] }
 askama = "0.12.1"
+tower = "0.4.13"
 
 [dev-dependencies]
 anyhow = "1"

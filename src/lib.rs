@@ -9,16 +9,19 @@ use crate::prelude::*;
 use askama::Template;
 use axum::{
     extract::{Path, State},
-    response::{Html, IntoResponse},
+    http::{Request, Uri},
+    response::{Html, IntoResponse, Response},
     routing::get,
-    Router,
+    serve::IncomingStream,
+    Router, ServiceExt,
 };
 use pulldown_cmark::{html, Parser};
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use serde::Deserialize;
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{collections::HashMap, convert::Infallible, fs, path::PathBuf};
 use tokio::net::TcpListener;
 use toml::value::Datetime;
+use tower::{util::MapRequestLayer, Layer, Service};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -34,20 +37,60 @@ struct Metadata {
     tags: Vec<String>,
 }
 
-pub async fn init_app(state: AppState) -> Result<(TcpListener, Router)> {
+pub async fn start(state: AppState) -> Result<()> {
     env_logger::init();
-    let app = init_router(state).await;
-    let listener = TcpListener::bind("0.0.0.0:3000").await?;
 
+    let app = MapRequestLayer::new(normalize_path).layer(
+        Router::new()
+            .route("/", get(get_root))
+            .route("/*path", get(get_page))
+            .with_state(state),
+    );
+    let listener = TcpListener::bind("0.0.0.0:3000").await?;
     log::info!("Listening on http://{}", listener.local_addr()?);
-    Ok((listener, app))
+    axum::serve(listener, app.into_make_service()).await?;
+    Ok(())
 }
 
-async fn init_router(state: AppState) -> Router {
-    Router::new()
-        .route("/", get(get_root))
-        .route("/*path", get(get_page))
-        .with_state(state)
+fn normalize_path<B>(mut req: Request<B>) -> Request<B>
+where
+    B: std::fmt::Debug,
+{
+    dbg!(&req);
+    let uri = req.uri_mut();
+    // If no trailing slash, just proceed
+    if !uri.path().ends_with('/') && !uri.path().starts_with("//") {
+        return req;
+    }
+
+    log::trace!("Triming trailing slash from {}", uri);
+    // Trim the trailing slash
+    let new_path = format!("/{}", uri.path().trim_matches('/'));
+
+    // Write new uri
+    let mut parts = uri.clone().into_parts();
+    let new_pq = if let Some(pq) = parts.path_and_query {
+        let q = if let Some(q) = pq.query() {
+            format!("?{q}")
+        } else {
+            String::new()
+        };
+        Some(
+            format!("{new_path}{q}")
+                .parse()
+                .expect("Error parsing rewritten uri"),
+        )
+    } else {
+        None
+    };
+
+    // Rewrite request
+    parts.path_and_query = new_pq;
+    if let Ok(new_uri) = Uri::from_parts(parts) {
+        *uri = new_uri;
+    }
+    dbg!(&req);
+    req
 }
 
 async fn get_root(state: State<AppState>) -> Result<Html<String>> {
