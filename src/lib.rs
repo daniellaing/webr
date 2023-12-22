@@ -56,7 +56,6 @@ fn normalize_path<B>(mut req: Request<B>) -> Request<B>
 where
     B: std::fmt::Debug,
 {
-    dbg!(&req);
     let uri = req.uri_mut();
     // If no trailing slash, just proceed
     if !uri.path().ends_with('/') && !uri.path().starts_with("//") {
@@ -89,7 +88,6 @@ where
     if let Ok(new_uri) = Uri::from_parts(parts) {
         *uri = new_uri;
     }
-    dbg!(&req);
     req
 }
 
