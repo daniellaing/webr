@@ -103,14 +103,14 @@ async fn get_page(state: State<AppState>, Path(path): Path<PathBuf>) -> Result<R
 
     if fs_path.is_dir() {
         spawn_blocking(|| markdown::render_dir(state, path)).await?
-    } else if ext == Some("css") {
-        get_css(state, path).await
-    } else {
+    } else if ext == Some("md") {
         spawn_blocking(|| markdown::render_markdown(state, fs::read_to_string(fs_path)?)).await?
+    } else {
+        get_file(state, path).await
     }
 }
 
-async fn get_css(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
+async fn get_file(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
     let file = File::open(state.root.join(path)).await?;
     let body = Body::from_stream(ReaderStream::new(file));
     let r = Response::builder().body(body)?;
