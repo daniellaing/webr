@@ -19,6 +19,11 @@
             cargo-watch
 
             prettierd
+
+            # Markdown
+            proselint
+            marksman
+            markdownlint-cli2
           ];
 
           shellHook = ''
