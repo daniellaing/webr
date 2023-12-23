@@ -8,18 +8,23 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse, Response},
 };
+use chrono::{DateTime, NaiveDate};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{fmt::Write, fs::read_dir, path::PathBuf};
+use tokio::fs;
 
 #[derive(Template)]
 #[template(path = "page.html")]
 struct PageTemplate {
     title: String,
+    last_modified: NaiveDate,
     content: String,
 }
 
-pub fn render_markdown(State(state): State<AppState>, md: String) -> Result<Response> {
+pub async fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+    let fs_path = state.root.join(&rel_path);
+    let md = fs::read_to_string(&fs_path).await?;
     let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
     pulldown_cmark::html::push_html(&mut content, &mut extractor);
@@ -33,17 +38,22 @@ pub fn render_markdown(State(state): State<AppState>, md: String) -> Result<Resp
             .source,
     )?;
 
+    let m = fs_path.metadata()?;
+    let last_modified: NaiveDate =
+        <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
+
     let page = PageTemplate {
         title: metadata.title,
+        last_modified,
         content,
     };
     Ok(Html(page.render()?).into_response())
 }
 
-pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
+pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
     let mut output = Vec::<String>::new();
     // Filter out only valid files
-    for entry in read_dir(state.root.join(&path))?
+    for entry in read_dir(state.root.join(&rel_path))?
         .filter_map(|e| e.ok())
         .filter(filter_files)
     {
@@ -59,13 +69,20 @@ pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Respon
             .to_string();
         output.push(format!(
             r#"<li><a href="/{}">{display}</a></li>"#,
-            path.join(&fname).display()
+            rel_path.join(&fname).display()
         ));
     }
 
-    let title = path.file_root().unwrap_or("Daniel's Website").to_string();
+    let title = rel_path
+        .file_root()
+        .unwrap_or("Daniel's Website")
+        .to_string();
+    let m = state.root.join(rel_path).metadata()?;
+    let last_modified: NaiveDate =
+        <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
     let page = PageTemplate {
         title,
+        last_modified,
         content: format!("<ul>{}</ul>", output.join("\n")),
     };
     Ok(Html(page.render()?).into_response())

@@ -16,6 +16,7 @@ use axum::{
     serve::IncomingStream,
     Router, ServiceExt,
 };
+use chrono::DateTime;
 use pulldown_cmark::{html, Parser};
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use serde::Deserialize;
@@ -34,9 +35,7 @@ pub struct AppState {
 #[derive(Debug, Deserialize)]
 struct Metadata {
     title: String,
-    created: Datetime,
-    modified: Datetime,
-    tags: Vec<String>,
+    tags: Option<Vec<String>>,
 }
 
 pub async fn start(state: AppState) -> Result<()> {
@@ -97,21 +96,21 @@ async fn get_root(state: State<AppState>) -> Result<impl IntoResponse> {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(state: State<AppState>, Path(path): Path<PathBuf>) -> Result<Response> {
-    let fs_path = state.root.join(&path);
-    let ext = path.extension().and_then(std::ffi::OsStr::to_str);
+async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Result<Response> {
+    let fs_path = state.root.join(&rel_path);
+    let ext = rel_path.extension().and_then(std::ffi::OsStr::to_str);
 
     if fs_path.is_dir() {
-        spawn_blocking(|| markdown::render_dir(state, path)).await?
+        spawn_blocking(|| markdown::render_dir(state, rel_path)).await?
     } else if ext == Some("md") {
-        spawn_blocking(|| markdown::render_markdown(state, fs::read_to_string(fs_path)?)).await?
+        markdown::render_markdown(state, rel_path).await
     } else {
-        get_file(state, path).await
+        get_file(state, rel_path).await
     }
 }
 
-async fn get_file(State(state): State<AppState>, path: PathBuf) -> Result<Response> {
-    let file = File::open(state.root.join(path)).await?;
+async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+    let file = File::open(state.root.join(rel_path)).await?;
     let body = Body::from_stream(ReaderStream::new(file));
     let r = Response::builder().body(body)?;
     Ok(r)
