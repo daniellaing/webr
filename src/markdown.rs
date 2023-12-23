@@ -1,4 +1,8 @@
-use crate::{prelude::*, utils::PathBufExt, Metadata};
+use crate::{
+    prelude::*,
+    utils::{PathBufExt, PathExt},
+    Metadata,
+};
 use askama::Template;
 use axum::{
     extract::State,
@@ -41,13 +45,7 @@ pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Respon
     // Filter out only valid files
     for entry in read_dir(state.root.join(&path))?
         .filter_map(|e| e.ok())
-        .filter(|e| {
-            if let Some(ext) = e.path().extension() {
-                ext == "md"
-            } else {
-                e.file_type().ok().map(|e| e.is_dir()).unwrap_or(false)
-            }
-        })
+        .filter(filter_files)
     {
         let fname: PathBuf = entry
             .path()
@@ -71,4 +69,20 @@ pub fn render_dir(State(state): State<AppState>, path: PathBuf) -> Result<Respon
         content: format!("<ul>{}</ul>", output.join("\n")),
     };
     Ok(Html(page.render()?).into_response())
+}
+
+/// Return `true` if file is to be shown, `false` otherwise
+fn filter_files(entry: &std::fs::DirEntry) -> bool {
+    // Never show hidden files
+    if entry.path().is_hidden().unwrap_or(false) {
+        false
+    } else {
+        // Is dir or md file
+        entry.file_type().ok().map(|e| e.is_dir()).unwrap_or(false)
+            || entry
+                .path()
+                .extension()
+                .and_then(|ext| Some("md" == ext))
+                .unwrap_or(false)
+    }
 }
