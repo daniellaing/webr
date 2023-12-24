@@ -67,10 +67,19 @@ pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
             .file_root()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
             .to_string();
-        output.push(format!(
-            r#"<li><a href="/{}">{display}</a></li>"#,
-            rel_path.join(&fname).display()
-        ));
+
+        let img = rel_path.join(&fname).with_extension("webp");
+        output.push(match state.root.join(&img).is_file() {
+            true => format!(
+                r#"<li><a href="/{}"><img src="/{}" alt="{display}"></img></a></li>"#,
+                rel_path.join(&fname).display(),
+                img.display()
+            ),
+            false => format!(
+                r#"<li><a href="/{}">{display}</a></li>"#,
+                rel_path.join(&fname).display()
+            ),
+        });
     }
 
     let title = rel_path
