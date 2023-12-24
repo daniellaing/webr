@@ -27,6 +27,7 @@ askama = "0.12.1"
 tower = "0.4.13"
 tokio-util = { version = "0.7.10", features = ["io"] }
 chrono = "0.4.31"
+convert_case = "0.6.0"
 
 [dev-dependencies]
 anyhow = "1"

@@ -9,6 +9,7 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 use chrono::{DateTime, NaiveDate};
+use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{fmt::Write, fs::read_dir, path::PathBuf};
@@ -66,7 +67,8 @@ pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
             .path()
             .file_root()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
-            .to_string();
+            .to_string()
+            .to_case(Case::Title);
 
         let img = rel_path.join(&fname).with_extension("webp");
         output.push(match state.root.join(&img).is_file() {
@@ -85,7 +87,8 @@ pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
     let title = rel_path
         .file_root()
         .unwrap_or("Daniel's Website")
-        .to_string();
+        .to_string()
+        .to_case(Case::Title);
     let m = state.root.join(rel_path).metadata()?;
     let last_modified: NaiveDate =
         <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
