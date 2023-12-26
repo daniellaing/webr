@@ -147,16 +147,14 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
 
 /// Return `true` if file is to be shown, `false` otherwise
 fn filter_files(entry: &std::fs::DirEntry) -> bool {
-    // Never show hidden files
-    if entry.path().is_hidden().unwrap_or(false) {
-        false
-    } else {
-        // Is dir or md file
-        entry.file_type().ok().map(|e| e.is_dir()).unwrap_or(false)
-            || entry
-                .path()
-                .extension()
-                .map(|ext| "md" == ext)
-                .unwrap_or(false)
-    }
+    let is_md = entry
+        .path()
+        .extension()
+        .map(|ext| "md" == ext)
+        .unwrap_or(false);
+    let is_dir = entry.file_type().map(|e| e.is_dir()).unwrap_or(false);
+    let is_hidden = entry.path().is_hidden().unwrap_or(true); // Unwrap as true because on error,
+                                                              // don't show file
+
+    !is_hidden && (is_md || is_dir)
 }
