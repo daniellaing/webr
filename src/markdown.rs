@@ -103,7 +103,7 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
                 req_path_fs
                     .join(Path::new(&format!(
                         ".{}",
-                        path.with_extension("").display()
+                        fname.with_extension("").display()
                     )))
                     .display()
             );
