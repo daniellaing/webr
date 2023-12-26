@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    utils::{PathBufExt, PathExt},
+    utils::path::{PathBufExt, PathExt},
 };
 use axum::extract::State;
 use convert_case::{Case, Casing};
@@ -25,7 +25,6 @@ pub async fn nav(root: impl AsRef<Path>) -> Result<String> {
                 .file_name()
                 .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
                 .into();
-            dbg!(&display_name);
             output.push(format!(
                 r#"<li><a href="/{}">{display_name}</a></li>"#,
                 path.display()

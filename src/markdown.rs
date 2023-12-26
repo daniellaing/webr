@@ -1,6 +1,9 @@
 use crate::{
     prelude::*,
-    utils::{html::nav, PathBufExt, PathExt},
+    utils::{
+        html::nav,
+        path::{PathBufExt, PathExt},
+    },
     Metadata,
 };
 use askama::Template;
