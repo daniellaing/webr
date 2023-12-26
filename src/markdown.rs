@@ -70,7 +70,8 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
 }
 
 pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
-    let mut output = Vec::<String>::new();
+    let mut pic_grid = Vec::new();
+    let mut list = Vec::new();
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
     for entry in read_dir(state.root.join(&req_path))?
@@ -123,10 +124,13 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
                     link: format!("/{}", path.display()),
                     caption,
                 };
-                pg.render()?
+                pic_grid.push(pg.render()?);
             }
-            false => format!(r#"<p><a href="/{}">{display_name}</a></p>"#, path.display()),
-        });
+            false => list.push(format!(
+                r#"<li><a href="/{}">{display_name}</a></li>"#,
+                path.display()
+            )),
+        };
     }
     let title = req_path
         .file_root()
@@ -139,7 +143,11 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
     let page = PageTemplate {
         title,
         last_modified,
-        content: format!(r#"<div class="pic-grid">{}</div>"#, output.join("\n")),
+        content: format!(
+            r#"<div class="pic-grid">{}</div><ul>{}</ul>"#,
+            pic_grid.join("\n"),
+            list.join("\n")
+        ),
         nav: state.nav(),
     };
     Ok(Html(page.render()?).into_response())
