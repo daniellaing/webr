@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    utils::{PathBufExt, PathExt},
+    utils::{html::nav, PathBufExt, PathExt},
     Metadata,
 };
 use askama::Template;
@@ -17,6 +17,7 @@ use std::{
     fs::{self, read_dir},
     path::{Path, PathBuf},
 };
+use tokio::task::spawn_blocking;
 
 #[derive(Template)]
 #[template(path = "page.html")]
@@ -24,6 +25,7 @@ struct PageTemplate {
     title: String,
     last_modified: NaiveDate,
     content: String,
+    nav: String,
 }
 
 #[derive(Template)]
@@ -36,7 +38,7 @@ struct PicGridTemplate {
 }
 
 pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
-    let fs_path = state.root.join(&rel_path);
+    let fs_path = state.root.join(rel_path);
     let md = fs::read_to_string(&fs_path)?;
     let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
@@ -59,11 +61,12 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
         title: metadata.title,
         last_modified,
         content,
+        nav: state.nav(),
     };
     Ok(Html(page.render()?).into_response())
 }
 
-pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
+pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
     let mut output = Vec::<String>::new();
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
@@ -87,17 +90,32 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Re
         let path_fs = entry.path().canonicalize()?;
         let path = req_path.join(&fname);
 
-        dbg!(&req_path);
-        dbg!(&req_path_fs);
-        dbg!(&path);
-        dbg!(&path_fs);
-        dbg!(&display_name);
-        dbg!(req_path_fs.join(Path::new(&format!(".{}", path.display()))));
+        {
+            use log::trace;
+            trace!(" ---   Tracing paths used   ---");
+            trace!("Request path:\t{}", req_path.display());
+            trace!("Request path (fs):\t{}", req_path_fs.display());
+            trace!("Entry path:\t\t{}", path.display());
+            trace!("Entry path (fs):\t{}", path_fs.display());
+            trace!("Display name:\t{}", display_name);
+            trace!(
+                "Dscr path (fs):\t{}",
+                req_path_fs
+                    .join(Path::new(&format!(
+                        ".{}",
+                        path.with_extension("").display()
+                    )))
+                    .display()
+            );
+        }
 
         let img = path.with_extension("webp");
         output.push(match path_fs.with_extension("webp").is_file() {
             true => {
-                let desc_path = req_path_fs.join(Path::new(&format!(".{}", path.display())));
+                let desc_path = req_path_fs.join(Path::new(&format!(
+                    ".{}",
+                    path.with_extension("").display()
+                )));
                 let caption = fs::read_to_string(desc_path).unwrap_or(String::new());
                 let pg = PicGridTemplate {
                     img: format! {"/{}", img.display()},
@@ -109,9 +127,7 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Re
             }
             false => format!(r#"<p><a href="/{}">{display_name}</a></p>"#, path.display()),
         });
-        println!("---------");
     }
-
     let title = req_path
         .file_root()
         .unwrap_or("Daniel's Website")
@@ -124,6 +140,7 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Re
         title,
         last_modified,
         content: format!(r#"<div class="pic-grid">{}</div>"#, output.join("\n")),
+        nav: state.nav(),
     };
     Ok(Html(page.render()?).into_response())
 }
@@ -139,7 +156,7 @@ fn filter_files(entry: &std::fs::DirEntry) -> bool {
             || entry
                 .path()
                 .extension()
-                .and_then(|ext| Some("md" == ext))
+                .map(|ext| "md" == ext)
                 .unwrap_or(false)
     }
 }

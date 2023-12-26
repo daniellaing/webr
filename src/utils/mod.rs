@@ -1,3 +1,5 @@
+pub mod html;
+
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -14,7 +16,7 @@ impl PathBufExt for PathBuf {
         let fname = self.file_name().and_then(OsStr::to_str);
         fname
             .and_then(|s| s.split_once('.'))
-            .and_then(|(before, _after)| Some(before))
+            .map(|(before, _after)| before)
             .or(fname)
     }
 }
@@ -29,6 +31,6 @@ impl PathExt for Path {
             .file_name()
             .ok_or(Error::Generic(format!("Invalid path {self:?}")))?
             .to_string_lossy()
-            .starts_with("."))
+            .starts_with('.'))
     }
 }

@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+pub mod app_state;
 pub mod error;
 mod markdown;
 pub mod prelude;
@@ -26,16 +27,14 @@ use tokio_util::io::ReaderStream;
 use toml::value::Datetime;
 use tower::{util::MapRequestLayer, Layer, Service};
 
-#[derive(Debug, Clone)]
-pub struct AppState {
-    pub root: PathBuf,
-    pub md_options: Options,
-}
-
 #[derive(Debug, Deserialize)]
 struct Metadata {
     title: String,
     tags: Option<Vec<String>>,
+}
+
+pub async fn init(root: PathBuf) -> Result<AppState> {
+    todo!()
 }
 
 pub async fn start(state: AppState) -> Result<()> {
@@ -101,7 +100,7 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
     let ext = rel_path.extension().and_then(std::ffi::OsStr::to_str);
 
     if fs_path.is_dir() {
-        spawn_blocking(|| markdown::render_dir(state, rel_path)).await?
+        markdown::render_dir(state, rel_path).await
     } else if ext == Some("md") {
         spawn_blocking(|| markdown::render_markdown(state, rel_path)).await?
     } else {

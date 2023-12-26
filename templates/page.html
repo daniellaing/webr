@@ -9,6 +9,11 @@
     <title>{{ title }}</title>
   </head>
   <body>
+    <header>
+      <div class="header-wrapper">
+        <nav>{{ nav|safe }}</nav>
+      </div>
+    </header>
     <main>{{ content|safe }}</main>
     <p class="last_modified">Last updated: {{ last_modified }}</p>
     <footer>
