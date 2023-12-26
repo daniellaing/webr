@@ -91,7 +91,7 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
 
         // Get the different paths we need
         let path_fs = entry.path().canonicalize()?;
-        let path = req_path.join(&fname);
+        let path = entry.path().strip_prefix(&state.root)?.to_owned();
 
         {
             use log::trace;
@@ -104,16 +104,13 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
             trace!(
                 "Dscr path (fs):\t{}",
                 req_path_fs
-                    .join(Path::new(&format!(
-                        ".{}",
-                        fname.with_extension("").display()
-                    )))
+                    .join(format!(".{}", fname.with_extension("").display()))
                     .display()
             );
         }
 
         let img = path.with_extension("webp");
-        output.push(match path_fs.with_extension("webp").is_file() {
+        match path_fs.with_extension("webp").is_file() {
             true => {
                 let desc_path = req_path_fs.join(Path::new(&format!(
                     ".{}",
