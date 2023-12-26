@@ -12,8 +12,11 @@ use chrono::{DateTime, NaiveDate};
 use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
-use std::{fmt::Write, fs::read_dir, path::PathBuf};
-use tokio::fs;
+use std::{
+    fmt::Write,
+    fs::{self, read_dir},
+    path::{Path, PathBuf},
+};
 
 #[derive(Template)]
 #[template(path = "page.html")]
@@ -23,9 +26,18 @@ struct PageTemplate {
     content: String,
 }
 
-pub async fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+#[derive(Template)]
+#[template(path = "pic_grid.html")]
+struct PicGridTemplate {
+    img: String,
+    name: String,
+    link: String,
+    caption: String,
+}
+
+pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
     let fs_path = state.root.join(&rel_path);
-    let md = fs::read_to_string(&fs_path).await?;
+    let md = fs::read_to_string(&fs_path)?;
     let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
     pulldown_cmark::html::push_html(&mut content, &mut extractor);
@@ -51,10 +63,11 @@ pub async fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -
     Ok(Html(page.render()?).into_response())
 }
 
-pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
     let mut output = Vec::<String>::new();
+    let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
-    for entry in read_dir(state.root.join(&rel_path))?
+    for entry in read_dir(state.root.join(&req_path))?
         .filter_map(|e| e.ok())
         .filter(filter_files)
     {
@@ -63,39 +76,54 @@ pub fn render_dir(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
             .file_name()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
             .into();
-        let display = entry
+        let display_name = entry
             .path()
             .file_root()
             .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
             .to_string()
             .to_case(Case::Title);
 
-        let img = rel_path.join(&fname).with_extension("webp");
-        output.push(match state.root.join(&img).is_file() {
-            true => format!(
-                r#"<li><a href="/{}"><img src="/{}" alt="{display}"></img></a></li>"#,
-                rel_path.join(&fname).display(),
-                img.display()
-            ),
-            false => format!(
-                r#"<li><a href="/{}">{display}</a></li>"#,
-                rel_path.join(&fname).display()
-            ),
+        // Get the different paths we need
+        let path_fs = entry.path().canonicalize()?;
+        let path = req_path.join(&fname);
+
+        dbg!(&req_path);
+        dbg!(&req_path_fs);
+        dbg!(&path);
+        dbg!(&path_fs);
+        dbg!(&display_name);
+        dbg!(req_path_fs.join(Path::new(&format!(".{}", path.display()))));
+
+        let img = path.with_extension("webp");
+        output.push(match path_fs.with_extension("webp").is_file() {
+            true => {
+                let desc_path = req_path_fs.join(Path::new(&format!(".{}", path.display())));
+                let caption = fs::read_to_string(desc_path).unwrap_or(String::new());
+                let pg = PicGridTemplate {
+                    img: format! {"/{}", img.display()},
+                    name: display_name,
+                    link: format!("/{}", path.display()),
+                    caption,
+                };
+                pg.render()?
+            }
+            false => format!(r#"<p><a href="/{}">{display_name}</a></p>"#, path.display()),
         });
+        println!("---------");
     }
 
-    let title = rel_path
+    let title = req_path
         .file_root()
         .unwrap_or("Daniel's Website")
         .to_string()
         .to_case(Case::Title);
-    let m = state.root.join(rel_path).metadata()?;
+    let m = state.root.join(req_path).metadata()?;
     let last_modified: NaiveDate =
         <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
     let page = PageTemplate {
         title,
         last_modified,
-        content: format!("<ul>{}</ul>", output.join("\n")),
+        content: format!(r#"<div class="pic-grid">{}</div>"#, output.join("\n")),
     };
     Ok(Html(page.render()?).into_response())
 }

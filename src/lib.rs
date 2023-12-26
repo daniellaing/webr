@@ -20,7 +20,7 @@ use chrono::DateTime;
 use pulldown_cmark::{html, Parser};
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use serde::Deserialize;
-use std::{boxed, collections::HashMap, convert::Infallible, fs, path::PathBuf};
+use std::{boxed, collections::HashMap, convert::Infallible, path::PathBuf};
 use tokio::{fs::File, io::AsyncRead, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
 use toml::value::Datetime;
@@ -103,7 +103,7 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
     if fs_path.is_dir() {
         spawn_blocking(|| markdown::render_dir(state, rel_path)).await?
     } else if ext == Some("md") {
-        markdown::render_markdown(state, rel_path).await
+        spawn_blocking(|| markdown::render_markdown(state, rel_path)).await?
     } else {
         get_file(state, rel_path).await
     }
