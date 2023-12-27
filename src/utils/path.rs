@@ -17,15 +17,13 @@ impl PathBufExt for PathBuf {
 }
 
 pub trait PathExt {
-    fn is_hidden(&self) -> Result<bool>;
+    fn is_hidden(&self) -> Option<bool>;
 }
 
 impl PathExt for Path {
-    fn is_hidden(&self) -> Result<bool> {
-        Ok(self
-            .file_name()
-            .ok_or(Error::Generic(format!("Invalid path {self:?}")))?
-            .to_string_lossy()
-            .starts_with('.'))
+    fn is_hidden(&self) -> Option<bool> {
+        self.file_name()
+            .map(std::ffi::OsStr::to_string_lossy)
+            .map(|s| s.starts_with("."))
     }
 }

@@ -41,7 +41,7 @@ impl AppStateBuilder<NoRoot> {
 impl AppStateBuilder<Root> {
     pub async fn build(self) -> Result<AppState> {
         Ok(AppState {
-            nav: nav(&self.root.0).await?,
+            nav: nav(&self.root.0)?,
             root: self.root.0,
             md_options: self.md_options.unwrap_or(Options::empty()),
         })
