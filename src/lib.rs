@@ -7,25 +7,19 @@ pub mod prelude;
 mod utils;
 
 use crate::prelude::*;
-use askama::Template;
 use axum::{
     body::Body,
     extract::{Path, State},
     http::{Request, Uri},
-    response::{Html, IntoResponse, Response},
+    response::{IntoResponse, Response},
     routing::get,
-    serve::IncomingStream,
     Router, ServiceExt,
 };
-use chrono::DateTime;
-use pulldown_cmark::{html, Parser};
-use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use serde::Deserialize;
-use std::{boxed, collections::HashMap, convert::Infallible, path::PathBuf};
-use tokio::{fs::File, io::AsyncRead, net::TcpListener, task::spawn_blocking};
+use std::path::PathBuf;
+use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
-use toml::value::Datetime;
-use tower::{util::MapRequestLayer, Layer, Service};
+use tower::{util::MapRequestLayer, Layer};
 
 #[derive(Debug, Deserialize)]
 struct Metadata {

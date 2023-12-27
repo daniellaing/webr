@@ -6,10 +6,8 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-use tokio::fs::read_dir as tokio_read_dir;
-use tokio_stream::wrappers::ReadDirStream;
 
-use crate::{prelude::*, utils::path::PathExt};
+use crate::utils::path::PathExt;
 
 use self::path::PathBufExt;
 

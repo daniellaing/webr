@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::{prelude::*, utils::nav};
 
@@ -30,7 +30,7 @@ impl AppStateBuilder<NoRoot> {
         AppStateBuilder::default()
     }
 
-    pub fn root(mut self, root: impl Into<PathBuf>) -> AppStateBuilder<Root> {
+    pub fn root(self, root: impl Into<PathBuf>) -> AppStateBuilder<Root> {
         AppStateBuilder {
             root: Root(root.into()),
             md_options: self.md_options,

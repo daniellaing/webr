@@ -1,9 +1,6 @@
 use crate::{
     prelude::*,
-    utils::{
-        nav,
-        path::{PathBufExt, PathExt},
-    },
+    utils::path::{PathBufExt, PathExt},
     Metadata,
 };
 use askama::Template;
@@ -16,11 +13,9 @@ use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{
-    fmt::Write,
     fs::{self, read_dir},
     path::{Path, PathBuf},
 };
-use tokio::task::spawn_blocking;
 
 #[derive(Template)]
 #[template(path = "page.html")]
@@ -67,6 +62,10 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
         nav: state.nav(),
     };
     Ok(Html(page.render()?).into_response())
+}
+
+fn m(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
+    todo!();
 }
 
 pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
