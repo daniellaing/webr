@@ -35,10 +35,10 @@ pub enum Error {
 pub fn nav(root: impl AsRef<Path>) -> Result<String> {
     let nav_home_link = String::from(r#"<li><a href="/">Home</a></li>"#);
     Ok(read_dir(root)?
-        .filter_map(|e| e.ok())
+        .filter_map(core::result::Result::ok)
         .filter(|e| is_shown_dir_only(e).unwrap_or(false))
         .map(to_display_and_path)
-        .filter_map(|e| e.ok())
+        .filter_map(core::result::Result::ok)
         .map(|(display_name, path)| {
             format!(
                 r#"<li><a href="/{}">{display_name}</a></li>"#,
