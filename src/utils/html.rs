@@ -34,7 +34,7 @@ pub async fn nav(root: impl AsRef<Path>) -> Result<String> {
     }
 
     Ok(format!(
-        r#"<ul><li><a href="/">Home</a></li>{}</ul>"#,
+        r#"<li><a href="/">Home</a></li>{}"#,
         output.join("\n")
     ))
 }
