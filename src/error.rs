@@ -7,6 +7,9 @@ pub enum Error {
     Generic(String),
 
     #[error(transparent)]
+    Nav(#[from] crate::utils::Error),
+
+    #[error(transparent)]
     IO(#[from] std::io::Error),
     #[error(transparent)]
     Path(#[from] std::path::StripPrefixError),

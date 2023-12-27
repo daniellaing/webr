@@ -1,7 +1,7 @@
 use crate::{
     prelude::*,
     utils::{
-        html::nav,
+        nav,
         path::{PathBufExt, PathExt},
     },
     Metadata,

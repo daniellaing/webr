@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use crate::{prelude::*, utils::html::nav};
+use crate::{prelude::*, utils::nav};
 
 #[derive(Debug, Clone)]
 pub struct AppState {
