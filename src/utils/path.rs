@@ -1,10 +1,11 @@
 use std::path::{Path, PathBuf};
 
-pub trait PathBufExt {
+pub trait PathExt {
     fn file_root(&self) -> Option<&str>;
+    fn is_hidden(&self) -> Option<bool>;
 }
 
-impl PathBufExt for PathBuf {
+impl PathExt for Path {
     fn file_root(&self) -> Option<&str> {
         let fname = self.file_name().and_then(std::ffi::OsStr::to_str);
         fname
@@ -12,13 +13,7 @@ impl PathBufExt for PathBuf {
             .map(|(before, _after)| before)
             .or(fname)
     }
-}
 
-pub trait PathExt {
-    fn is_hidden(&self) -> Option<bool>;
-}
-
-impl PathExt for Path {
     fn is_hidden(&self) -> Option<bool> {
         self.file_name()
             .map(std::ffi::OsStr::to_string_lossy)

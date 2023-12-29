@@ -8,17 +8,11 @@ pub enum Error {
 
     #[error(transparent)]
     Nav(#[from] crate::utils::Error),
+    #[error(transparent)]
+    Markdown(#[from] crate::markdown::Error),
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    #[error(transparent)]
-    Path(#[from] std::path::StripPrefixError),
-
-    #[error(transparent)]
-    TOML(#[from] toml::de::Error),
-
-    #[error(transparent)]
-    Askama(#[from] askama::Error),
 
     #[error(transparent)]
     TokioJoinError(#[from] tokio::task::JoinError),

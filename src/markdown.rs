@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    utils::path::{PathBufExt, PathExt},
+    utils::{is_shown, iterator::PartitionResult, path::PathExt},
     Metadata,
 };
 use askama::Template;
@@ -13,9 +13,33 @@ use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{
+    collections::HashSet,
     fs::{self, read_dir},
     path::{Path, PathBuf},
 };
+use thiserror::Error;
+
+pub type Result<T> = core::result::Result<T, Error>;
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Could not get file root of {}", .0.display())]
+    FileRoot(PathBuf),
+
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+
+    #[error("No frontmatter found")]
+    Frontmatter,
+
+    #[error(transparent)]
+    TOML(#[from] toml::de::Error),
+
+    #[error(transparent)]
+    Template(#[from] askama::Error),
+
+    #[error(transparent)]
+    Path(#[from] std::path::StripPrefixError),
+}
 
 #[derive(Template)]
 #[template(path = "page.html")]
@@ -35,6 +59,17 @@ struct PicGridTemplate {
     caption: String,
 }
 
+#[derive(Debug, Default)]
+struct Paths {
+    request_path: PathBuf,
+    full_request_path: PathBuf,
+    entry_path: PathBuf,
+    full_entry_path: PathBuf,
+    image_path: PathBuf,
+    description_path: PathBuf,
+    display_name: String,
+}
+
 pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
     let fs_path = state.root.join(rel_path);
     let md = fs::read_to_string(&fs_path)?;
@@ -45,9 +80,9 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
     let metadata: Metadata = toml::from_str(
         &extractor
             .frontmatter
-            .ok_or(Error::Generic(String::from("No frontmatter found")))?
+            .ok_or(Error::Frontmatter)?
             .code_block
-            .ok_or(Error::Generic(String::from("No codeblock found")))?
+            .ok_or(Error::Frontmatter)?
             .source,
     )?;
 
@@ -64,73 +99,25 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
     Ok(Html(page.render()?).into_response())
 }
 
-fn m(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
-    todo!();
-}
-
 pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
-    let mut pic_grid = Vec::new();
-    let mut list = Vec::new();
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
-    for entry in read_dir(state.root.join(&req_path))?
-        .filter_map(|e| e.ok())
-        .filter(filter_files)
-    {
-        let fname: PathBuf = entry
-            .path()
-            .file_name()
-            .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
-            .into();
-        let display_name = entry
-            .path()
-            .file_root()
-            .ok_or(Error::Generic(format!("Invalid path {:?}", entry)))?
-            .to_string()
-            .to_case(Case::Title);
+    let (imgs, links) = read_dir(state.root.join(&req_path))?
+        .filter_map(core::result::Result::ok)
+        .filter(|e| is_shown(e).unwrap_or(false))
+        .map(get_paths(&state.root, &req_path))
+        .filter_map(core::result::Result::ok)
+        .map(format_image_link(&state.root, &req_path))
+        // Separate any items which failed, just show link instead
+        .partition_result();
 
-        // Get the different paths we need
-        let path_fs = entry.path().canonicalize()?;
-        let path = entry.path().strip_prefix(&state.root)?.to_owned();
+    // Format links
+    let links = links
+        .into_iter()
+        .map(format_links)
+        .fold(String::new(), |acc, s| acc + &s);
 
-        {
-            use log::trace;
-            trace!(" ---   Tracing paths used   ---");
-            trace!("Request path:\t{}", req_path.display());
-            trace!("Request path (fs):\t{}", req_path_fs.display());
-            trace!("Entry path:\t\t{}", path.display());
-            trace!("Entry path (fs):\t{}", path_fs.display());
-            trace!("Display name:\t{}", display_name);
-            trace!(
-                "Dscr path (fs):\t{}",
-                req_path_fs
-                    .join(format!(".{}", fname.with_extension("").display()))
-                    .display()
-            );
-        }
-
-        let img = path.with_extension("webp");
-        match path_fs.with_extension("webp").is_file() {
-            true => {
-                let desc_path = req_path_fs.join(Path::new(&format!(
-                    ".{}",
-                    path.with_extension("").display()
-                )));
-                let caption = fs::read_to_string(desc_path).unwrap_or(String::new());
-                let pg = PicGridTemplate {
-                    img: format! {"/{}", img.display()},
-                    name: display_name,
-                    link: format!("/{}", path.display()),
-                    caption,
-                };
-                pic_grid.push(pg.render()?);
-            }
-            false => list.push(format!(
-                r#"<li><a href="/{}">{display_name}</a></li>"#,
-                path.display()
-            )),
-        };
-    }
+    // Get page metadata
     let title = req_path
         .file_root()
         .unwrap_or("Daniel's Website")
@@ -139,13 +126,15 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
     let m = state.root.join(req_path).metadata()?;
     let last_modified: NaiveDate =
         <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
+
+    // Render page
     let page = PageTemplate {
         title,
         last_modified,
         content: format!(
             r#"<div class="pic-grid">{}</div><ul>{}</ul>"#,
-            pic_grid.join("\n"),
-            list.join("\n")
+            imgs.join(""),
+            links
         ),
         nav: state.nav(),
     };
@@ -164,4 +153,61 @@ fn filter_files(entry: &std::fs::DirEntry) -> bool {
                                                               // don't show file
 
     !is_hidden && (is_md || is_dir)
+}
+
+fn get_paths<'a>(
+    root: &'a PathBuf,
+    request_path: &'a PathBuf,
+) -> impl FnMut(fs::DirEntry) -> Result<Paths> + 'a {
+    move |e| {
+        let entry_path = e.path().strip_prefix(root)?.to_path_buf();
+        let display_name = entry_path
+            .file_root()
+            .ok_or(Error::FileRoot(e.path()))?
+            .to_string()
+            .to_case(Case::Title);
+        let description_path = root.join(request_path).join(format!(
+            ".{}",
+            entry_path.file_root().ok_or(Error::FileRoot(e.path()))?
+        ));
+
+        Ok(Paths {
+            request_path: request_path.clone(),
+            full_request_path: root.join(request_path),
+            image_path: entry_path.with_extension("webp"),
+            entry_path,
+            full_entry_path: e.path(),
+            description_path,
+            display_name,
+        })
+    }
+}
+
+fn format_image_link<'a>(
+    root: &'a PathBuf,
+    request_path: &'a PathBuf,
+) -> impl FnMut(Paths) -> core::result::Result<String, Paths> + 'a {
+    move |paths| {
+        if !root.join(&paths.image_path).is_file() {
+            return Err(paths);
+        }
+
+        let caption = fs::read_to_string(&paths.description_path).unwrap_or_default();
+        let pg = PicGridTemplate {
+            name: paths.display_name.clone(),
+            img: format!("/{}", paths.image_path.display()),
+            link: format!("/{}", paths.entry_path.display()),
+            caption,
+        };
+
+        pg.render().map_err(|_e| paths)
+    }
+}
+
+fn format_links(paths: Paths) -> String {
+    format!(
+        r#"<li><a href="/{}">{}</a></li>"#,
+        paths.entry_path.display(),
+        paths.display_name
+    )
 }

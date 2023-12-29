@@ -94,9 +94,13 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
     let ext = rel_path.extension().and_then(std::ffi::OsStr::to_str);
 
     if fs_path.is_dir() {
-        markdown::render_dir(state, rel_path).await
+        markdown::render_dir(state, rel_path)
+            .await
+            .map_err(|err| Error::Markdown(err))
     } else if ext == Some("md") {
-        spawn_blocking(|| markdown::render_markdown(state, rel_path)).await?
+        spawn_blocking(|| markdown::render_markdown(state, rel_path))
+            .await?
+            .map_err(|err| Error::Markdown(err))
     } else {
         get_file(state, rel_path).await
     }

@@ -1,3 +1,4 @@
+pub mod iterator;
 pub mod path;
 
 use convert_case::{Case, Casing};
@@ -8,8 +9,6 @@ use std::{
 use thiserror::Error;
 
 use crate::utils::path::PathExt;
-
-use self::path::PathBufExt;
 
 pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
@@ -35,7 +34,7 @@ pub fn nav(root: impl AsRef<Path>) -> Result<String> {
     Ok(read_dir(root)?
         .filter_map(core::result::Result::ok)
         .filter(|e| is_shown_dir_only(e).unwrap_or(false))
-        .map(to_display_and_path)
+        .map(to_display_and_fname)
         .filter_map(core::result::Result::ok)
         .map(|(display_name, path)| {
             format!(
@@ -71,7 +70,7 @@ pub fn is_shown_dir_only(entry: &DirEntry) -> Result<bool> {
     Ok(!hidden && is_dir)
 }
 
-fn to_display_and_path(entry: DirEntry) -> Result<(String, PathBuf)> {
+fn to_display_and_fname(entry: DirEntry) -> Result<(String, PathBuf)> {
     let path: PathBuf = entry
         .path()
         .file_name()
