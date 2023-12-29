@@ -13,12 +13,12 @@ use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{
-    collections::HashSet,
     fs::{self, read_dir},
-    path::{Path, PathBuf},
+    path::Path,
+    path::PathBuf,
 };
 use thiserror::Error;
-use time::{Date, OffsetDateTime};
+use time::OffsetDateTime;
 
 pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
@@ -33,7 +33,7 @@ pub enum Error {
     Frontmatter,
 
     #[error(transparent)]
-    TOML(#[from] toml::de::Error),
+    Toml(#[from] toml::de::Error),
 
     #[error(transparent)]
     Template(#[from] templates::Error),
@@ -53,10 +53,7 @@ struct PicGridTemplate {
 
 #[derive(Debug, Default)]
 struct Paths {
-    request_path: PathBuf,
-    full_request_path: PathBuf,
     entry_path: PathBuf,
-    full_entry_path: PathBuf,
     image_path: PathBuf,
     description_path: PathBuf,
     display_name: String,
@@ -85,7 +82,7 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
             .last_modified(l.date())
             .build(state.root, content)?
             .render()
-            .map_err(|err| templates::Error::Template(err))?,
+            .map_err(templates::Error::Template)?,
     )
     .into_response())
 }
@@ -98,7 +95,7 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         .filter(|e| is_shown(e).unwrap_or(false))
         .map(get_paths(&state.root, &req_path))
         .filter_map(core::result::Result::ok)
-        .map(format_image_link(&state.root, &req_path))
+        .map(format_image_link(&state.root))
         // Separate any items which failed, just show link instead
         .partition_result();
 
@@ -114,7 +111,6 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         .unwrap_or("Daniel's Website")
         .to_string()
         .to_case(Case::Title);
-    let m = state.root.join(req_path).metadata()?;
 
     let l: OffsetDateTime = req_path_fs.metadata()?.modified()?.into();
     Ok(Html(
@@ -130,23 +126,9 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
                 ),
             )?
             .render()
-            .map_err(|err| templates::Error::Template(err))?,
+            .map_err(templates::Error::Template)?,
     )
     .into_response())
-}
-
-/// Return `true` if file is to be shown, `false` otherwise
-fn filter_files(entry: &std::fs::DirEntry) -> bool {
-    let is_md = entry
-        .path()
-        .extension()
-        .map(|ext| "md" == ext)
-        .unwrap_or(false);
-    let is_dir = entry.file_type().map(|e| e.is_dir()).unwrap_or(false);
-    let is_hidden = entry.path().is_hidden().unwrap_or(true); // Unwrap as true because on error,
-                                                              // don't show file
-
-    !is_hidden && (is_md || is_dir)
 }
 
 fn get_paths<'a>(
@@ -166,21 +148,15 @@ fn get_paths<'a>(
         ));
 
         Ok(Paths {
-            request_path: request_path.clone(),
-            full_request_path: root.join(request_path),
             image_path: entry_path.with_extension("webp"),
             entry_path,
-            full_entry_path: e.path(),
             description_path,
             display_name,
         })
     }
 }
 
-fn format_image_link<'a>(
-    root: &'a PathBuf,
-    request_path: &'a PathBuf,
-) -> impl FnMut(Paths) -> core::result::Result<String, Paths> + 'a {
+fn format_image_link(root: &Path) -> impl FnMut(Paths) -> core::result::Result<String, Paths> + '_ {
     move |paths| {
         if !root.join(&paths.image_path).is_file() {
             return Err(paths);

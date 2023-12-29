@@ -28,10 +28,6 @@ struct Metadata {
     tags: Option<Vec<String>>,
 }
 
-pub async fn init(root: PathBuf) -> Result<AppState> {
-    todo!()
-}
-
 pub async fn start(state: AppState) -> Result<()> {
     env_logger::init();
 
@@ -97,11 +93,11 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
     if fs_path.is_dir() {
         markdown::render_dir(state, rel_path)
             .await
-            .map_err(|err| Error::Markdown(err))
+            .map_err(Error::Markdown)
     } else if ext == Some("md") {
         spawn_blocking(|| markdown::render_markdown(state, rel_path))
             .await?
-            .map_err(|err| Error::Markdown(err))
+            .map_err(Error::Markdown)
     } else {
         get_file(state, rel_path).await
     }

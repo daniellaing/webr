@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub trait PathExt {
     fn file_root(&self) -> Option<&str>;

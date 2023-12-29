@@ -54,7 +54,7 @@ impl<T> PageTemplateBuilder<T, NoLM> {
 }
 
 impl PageTemplateBuilder<Title, LM> {
-    pub fn build(mut self, root: impl AsRef<Path>, content: impl Into<String>) -> R<PageTemplate> {
+    pub fn build(self, root: impl AsRef<Path>, content: impl Into<String>) -> R<PageTemplate> {
         Ok(PageTemplate {
             title: self.title.0,
             content: content.into(),
