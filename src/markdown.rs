@@ -1,5 +1,6 @@
 use crate::{
     prelude::*,
+    templates::{self, PageTemplate},
     utils::{is_shown, iterator::PartitionResult, path::PathExt},
     Metadata,
 };
@@ -8,7 +9,6 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse, Response},
 };
-use chrono::{DateTime, NaiveDate};
 use convert_case::{Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
@@ -18,6 +18,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+use time::{Date, OffsetDateTime};
 
 pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
@@ -35,19 +36,10 @@ pub enum Error {
     TOML(#[from] toml::de::Error),
 
     #[error(transparent)]
-    Template(#[from] askama::Error),
+    Template(#[from] templates::Error),
 
     #[error(transparent)]
     Path(#[from] std::path::StripPrefixError),
-}
-
-#[derive(Template)]
-#[template(path = "page.html")]
-struct PageTemplate {
-    title: String,
-    last_modified: NaiveDate,
-    content: String,
-    nav: String,
 }
 
 #[derive(Template)]
@@ -86,17 +78,16 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
             .source,
     )?;
 
-    let m = fs_path.metadata()?;
-    let last_modified: NaiveDate =
-        <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
-
-    let page = PageTemplate {
-        title: metadata.title,
-        last_modified,
-        content,
-        nav: state.nav(),
-    };
-    Ok(Html(page.render()?).into_response())
+    let l: OffsetDateTime = fs_path.metadata()?.modified()?.into();
+    Ok(Html(
+        PageTemplate::builder()
+            .title(metadata.title)
+            .last_modified(l.date())
+            .build(state.root, content)?
+            .render()
+            .map_err(|err| templates::Error::Template(err))?,
+    )
+    .into_response())
 }
 
 pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
@@ -124,21 +115,24 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         .to_string()
         .to_case(Case::Title);
     let m = state.root.join(req_path).metadata()?;
-    let last_modified: NaiveDate =
-        <std::time::SystemTime as Into<DateTime<chrono::Utc>>>::into(m.modified()?).date_naive();
 
-    // Render page
-    let page = PageTemplate {
-        title,
-        last_modified,
-        content: format!(
-            r#"<div class="pic-grid">{}</div><ul>{}</ul>"#,
-            imgs.join(""),
-            links
-        ),
-        nav: state.nav(),
-    };
-    Ok(Html(page.render()?).into_response())
+    let l: OffsetDateTime = req_path_fs.metadata()?.modified()?.into();
+    Ok(Html(
+        PageTemplate::builder()
+            .title(title)
+            .last_modified(l.date())
+            .build(
+                state.root,
+                format!(
+                    r#"<div class="pic-grid">{}</div><ul>{}</ul>"#,
+                    imgs.join(""),
+                    links
+                ),
+            )?
+            .render()
+            .map_err(|err| templates::Error::Template(err))?,
+    )
+    .into_response())
 }
 
 /// Return `true` if file is to be shown, `false` otherwise

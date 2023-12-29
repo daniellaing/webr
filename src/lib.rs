@@ -4,6 +4,7 @@ pub mod app_state;
 pub mod error;
 mod markdown;
 pub mod prelude;
+mod templates;
 mod utils;
 
 use crate::prelude::*;
