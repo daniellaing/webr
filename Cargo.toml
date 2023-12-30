@@ -15,7 +15,6 @@ path = "src/bin/main.rs"
 
 [dependencies]
 thiserror = "1"
-env_logger = "0.10"
 axum = { version = "0.7.2", features = ["macros"] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "fs"] }
 pulldown-cmark = "0.9.3"
@@ -29,6 +28,8 @@ convert_case = "0.6.0"
 tokio-stream = { version = "0.1.14", features = ["fs"] }
 time = "0.3.31"
 tracing = "0.1.40"
+tower-http = { version = "0.5.0", features = ["trace"] }
+tracing-subscriber = "0.3.18"
 
 [dev-dependencies]
 anyhow = "1"

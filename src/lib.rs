@@ -21,6 +21,7 @@ use std::path::PathBuf;
 use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
 use tower::{util::MapRequestLayer, Layer};
+use tower_http::trace::TraceLayer;
 
 #[derive(Debug, Deserialize)]
 struct Metadata {
@@ -29,12 +30,11 @@ struct Metadata {
 }
 
 pub async fn start(state: AppState) -> Result<()> {
-    env_logger::init();
-
     let app = MapRequestLayer::new(normalize_path).layer(
         Router::new()
             .route("/", get(get_root))
             .route("/*path", get(get_page))
+            .layer(TraceLayer::new_for_http())
             .with_state(state),
     );
     let listener = TcpListener::bind("0.0.0.0:8080").await?;
