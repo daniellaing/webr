@@ -81,7 +81,5 @@ fn to_display_and_fname(entry: DirEntry) -> Result<(String, PathBuf)> {
         .map(String::from)
         .map(|s| s.to_case(Case::Title))
         .ok_or(Error::FileRoot(entry.path()))?;
-    dbg!(&path);
-    dbg!(&display_name);
     Ok((display_name, path))
 }
