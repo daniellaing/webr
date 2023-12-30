@@ -37,7 +37,7 @@ pub async fn start(state: AppState) -> Result<()> {
             .route("/*path", get(get_page))
             .with_state(state),
     );
-    let listener = TcpListener::bind("0.0.0.0:3000").await?;
+    let listener = TcpListener::bind("0.0.0.0:8080").await?;
     log::info!("Listening on http://{}", listener.local_addr()?);
     axum::serve(listener, app.into_make_service()).await?;
     Ok(())
