@@ -38,7 +38,7 @@ pub async fn start(state: AppState) -> Result<()> {
             .with_state(state),
     );
     let listener = TcpListener::bind("0.0.0.0:8080").await?;
-    log::info!("Listening on http://{}", listener.local_addr()?);
+    tracing::info!("Listening on http://{}", listener.local_addr()?);
     axum::serve(listener, app.into_make_service()).await?;
     Ok(())
 }
@@ -53,7 +53,7 @@ where
         return req;
     }
 
-    log::trace!("Triming trailing slash from {}", uri);
+    tracing::trace!("Triming trailing slash from {}", uri);
     // Trim the trailing slash
     let new_path = format!("/{}", uri.path().trim_matches('/'));
 
