@@ -6,16 +6,11 @@ use crate::{prelude::*, utils::nav};
 pub struct AppState {
     pub root: PathBuf,
     pub md_options: Options,
-    nav: String,
 }
 
 impl AppState {
     pub fn builder() -> AppStateBuilder<NoRoot> {
         AppStateBuilder::default()
-    }
-
-    pub fn nav(self) -> String {
-        self.nav
     }
 }
 
@@ -41,7 +36,6 @@ impl AppStateBuilder<NoRoot> {
 impl AppStateBuilder<Root> {
     pub async fn build(self) -> Result<AppState> {
         Ok(AppState {
-            nav: nav(&self.root.0)?,
             root: self.root.0,
             md_options: self.md_options.unwrap_or(Options::empty()),
         })
