@@ -110,11 +110,19 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
     trace!("Formatting images");
-    let (imgs, links) = read_dir(state.root.join(&req_path))?
+
+    let mut sorted_entries = read_dir(state.root.join(&req_path))?
         .filter_map(core::result::Result::ok)
         .filter(|e| is_shown(e).unwrap_or(false))
         .map(get_paths(&state.root, &req_path))
         .filter_map(core::result::Result::ok)
+        .collect::<Vec<_>>();
+    // Sort
+    sorted_entries.sort_by(|a, b| a.display_name.cmp(&b.display_name));
+
+    let (imgs, links) = sorted_entries
+        .into_iter()
+        .into_iter()
         .map(format_image_link(&state.root))
         // Separate any items which failed, just show link instead
         .partition_result();
