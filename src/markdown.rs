@@ -151,12 +151,13 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         });
     Ok(Html(
         PageTemplate::builder()
-            .title(title)
+            .title(&title)
             .last_modified(l.date())
             .build(
                 state.root,
                 format!(
-                    r#"<div class="pic-grid">{}</div><ul>{}</ul>"#,
+                    r#"<h1>{}</h1><div class="pic-grid">{}</div><ul>{}</ul>"#,
+                    title,
                     imgs.join(""),
                     links
                 ),
