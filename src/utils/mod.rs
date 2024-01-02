@@ -33,11 +33,15 @@ pub enum Error {
 pub fn nav(root: impl AsRef<Path>) -> Result<String> {
     trace!("Building nav");
     let nav_home_link = String::from(r#"<li><a href="/">Home</a></li>"#);
-    Ok(read_dir(root)?
+    let mut entries = read_dir(root)?
         .filter_map(core::result::Result::ok)
         .filter(|e| is_shown_dir_only(e).unwrap_or(false))
         .map(to_display_and_fname)
         .filter_map(core::result::Result::ok)
+        .collect::<Vec<_>>();
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(entries
+        .into_iter()
         .map(|(display_name, path)| {
             format!(
                 r#"<li><a href="/{}">{display_name}</a></li>"#,
