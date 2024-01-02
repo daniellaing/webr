@@ -3,6 +3,7 @@ use askama::Template;
 use std::path::Path;
 use thiserror::Error;
 use time::Date;
+use tracing::{debug, trace};
 
 pub type R<T> = Result<T, Error>;
 #[derive(Debug, Error)]
@@ -25,6 +26,7 @@ pub struct PageTemplate {
 
 impl PageTemplate {
     pub fn builder() -> PageTemplateBuilder<NoTitle, NoLM> {
+        debug!(r#"Building page template"#);
         PageTemplateBuilder::default()
     }
 }
@@ -37,8 +39,10 @@ pub struct PageTemplateBuilder<T, M> {
 
 impl<M> PageTemplateBuilder<NoTitle, M> {
     pub fn title(self, title: impl Into<String>) -> PageTemplateBuilder<Title, M> {
+        let title = title.into();
+        trace!(r#"Adding page title: "{}""#, &title);
         PageTemplateBuilder {
-            title: Title(title.into()),
+            title: Title(title),
             last_modified: self.last_modified,
         }
     }
@@ -46,6 +50,7 @@ impl<M> PageTemplateBuilder<NoTitle, M> {
 
 impl<T> PageTemplateBuilder<T, NoLM> {
     pub fn last_modified(self, last_modified: impl Into<Date>) -> PageTemplateBuilder<T, LM> {
+        trace!("Adding page last modified date");
         PageTemplateBuilder {
             title: self.title,
             last_modified: LM(last_modified.into()),
@@ -55,12 +60,13 @@ impl<T> PageTemplateBuilder<T, NoLM> {
 
 impl PageTemplateBuilder<Title, LM> {
     pub fn build(self, root: impl AsRef<Path>, content: impl Into<String>) -> R<PageTemplate> {
-        Ok(PageTemplate {
+        let pt = PageTemplate {
             title: self.title.0,
             content: content.into(),
             last_modified: self.last_modified.0,
             nav: nav(root)?,
-        })
+        };
+        Ok(pt)
     }
 }
 

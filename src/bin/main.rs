@@ -3,14 +3,14 @@ use webr::{prelude::*, start};
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .pretty()
+        .with_max_level(tracing::Level::TRACE)
         .init();
 
     let state = AppState::builder()
         .root("./content")
         .md_options(Options::all())
-        .build()
-        .await?;
+        .build();
 
     start(state).await?;
     Ok(())

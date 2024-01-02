@@ -22,6 +22,7 @@ use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
 use tower::{util::MapRequestLayer, Layer};
 use tower_http::trace::TraceLayer;
+use tracing::{debug, trace};
 
 #[derive(Debug, Deserialize)]
 struct Metadata {
@@ -29,7 +30,17 @@ struct Metadata {
     tags: Option<Vec<String>>,
 }
 
+impl Default for Metadata {
+    fn default() -> Self {
+        Metadata {
+            title: String::from("Daniel's Website"),
+            tags: None,
+        }
+    }
+}
+
 pub async fn start(state: AppState) -> Result<()> {
+    debug!("Creating Router");
     let app = MapRequestLayer::new(normalize_path).layer(
         Router::new()
             .route("/", get(get_root))
@@ -104,6 +115,7 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
 }
 
 async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+    trace!(r#"Serving "{}""#, rel_path.display());
     let file = File::open(state.root.join(rel_path)).await?;
     let body = Body::from_stream(ReaderStream::new(file));
     let r = Response::builder().body(body)?;

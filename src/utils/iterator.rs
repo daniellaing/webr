@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use tracing::trace;
+
 pub trait PartitionResult<T, E> {
     type Item;
     fn partition_result(self) -> (Vec<T>, Vec<E>);

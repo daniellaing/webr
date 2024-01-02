@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
 use crate::{prelude::*, utils::nav};
+use std::path::PathBuf;
+use tracing::trace;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -10,6 +10,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn builder() -> AppStateBuilder<NoRoot> {
+        trace!("Building AppState");
         AppStateBuilder::default()
     }
 }
@@ -26,6 +27,7 @@ impl AppStateBuilder<NoRoot> {
     }
 
     pub fn root(self, root: impl Into<PathBuf>) -> AppStateBuilder<Root> {
+        trace!("Setting content root");
         AppStateBuilder {
             root: Root(root.into()),
             md_options: self.md_options,
@@ -34,16 +36,18 @@ impl AppStateBuilder<NoRoot> {
 }
 
 impl AppStateBuilder<Root> {
-    pub async fn build(self) -> Result<AppState> {
-        Ok(AppState {
+    pub fn build(self) -> AppState {
+        trace!("Finished building AppState");
+        AppState {
             root: self.root.0,
             md_options: self.md_options.unwrap_or(Options::empty()),
-        })
+        }
     }
 }
 
 impl<R> AppStateBuilder<R> {
     pub fn md_options(mut self, md_options: Options) -> Self {
+        trace!("Setting markdown parsing options");
         self.md_options = Some(md_options);
         self
     }

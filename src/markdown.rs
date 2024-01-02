@@ -19,6 +19,7 @@ use std::{
 };
 use thiserror::Error;
 use time::OffsetDateTime;
+use tracing::{debug, error, trace, warn};
 
 pub type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
@@ -60,22 +61,39 @@ struct Paths {
 }
 
 pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
-    let fs_path = state.root.join(rel_path);
+    debug!(r#"Serving markdown for "{}""#, rel_path.display());
+    let fs_path = state.root.join(rel_path).canonicalize()?;
+    trace!(r#"Reading "{}""#, fs_path.display());
     let md = fs::read_to_string(&fs_path)?;
+    trace!("Creating frontmatter exctractor");
     let mut extractor = FrontmatterExtractor::new(Parser::new_ext(&md, state.md_options));
     let mut content = String::new();
+    trace!("Parsing markdown");
     pulldown_cmark::html::push_html(&mut content, &mut extractor);
 
-    let metadata: Metadata = toml::from_str(
-        &extractor
-            .frontmatter
-            .ok_or(Error::Frontmatter)?
-            .code_block
-            .ok_or(Error::Frontmatter)?
-            .source,
-    )?;
+    trace!("Parsing metadata");
+    let toml = extractor
+        .frontmatter
+        .and_then(|fm| fm.code_block)
+        .map(|cb| cb.source)
+        .unwrap_or_else(|| {
+            error!(r#"No fronmatter found!"#);
+            r#"title = "Daniel's Website""#.into()
+        });
 
-    let l: OffsetDateTime = fs_path.metadata()?.modified()?.into();
+    let metadata: Metadata = toml::from_str(&toml).unwrap_or_else(|err| {
+        error!("Error parsing frontmatter: {err}");
+        Metadata::default()
+    });
+
+    let l: OffsetDateTime = fs_path
+        .metadata()
+        .and_then(|md| md.modified())
+        .map(|lm| lm.into())
+        .unwrap_or_else(|err| {
+            error!("Could not get last modified date: {err}");
+            OffsetDateTime::now_utc()
+        });
     Ok(Html(
         PageTemplate::builder()
             .title(metadata.title)
@@ -88,8 +106,10 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
 }
 
 pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
+    debug!(r#"Serving directory "{}""#, req_path.display());
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
+    trace!("Formatting images");
     let (imgs, links) = read_dir(state.root.join(&req_path))?
         .filter_map(core::result::Result::ok)
         .filter(|e| is_shown(e).unwrap_or(false))
@@ -100,6 +120,7 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         .partition_result();
 
     // Format links
+    trace!("Formatting links");
     let links = links
         .into_iter()
         .map(format_links)
@@ -112,7 +133,14 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
         .to_string()
         .to_case(Case::Title);
 
-    let l: OffsetDateTime = req_path_fs.metadata()?.modified()?.into();
+    let l: OffsetDateTime = req_path_fs
+        .metadata()
+        .and_then(|md| md.modified())
+        .map(|lm| lm.into())
+        .unwrap_or_else(|err| {
+            error!("Could not get last modified date: {err}");
+            OffsetDateTime::now_utc()
+        });
     Ok(Html(
         PageTemplate::builder()
             .title(title)
@@ -136,6 +164,7 @@ fn get_paths<'a>(
     request_path: &'a PathBuf,
 ) -> impl FnMut(fs::DirEntry) -> Result<Paths> + 'a {
     move |e| {
+        trace!(r#"Getting paths for "{}""#, e.path().display());
         let entry_path = e.path().strip_prefix(root)?.to_path_buf();
         let display_name = entry_path
             .file_root()
@@ -159,10 +188,23 @@ fn get_paths<'a>(
 fn format_image_link(root: &Path) -> impl FnMut(Paths) -> core::result::Result<String, Paths> + '_ {
     move |paths| {
         if !root.join(&paths.image_path).is_file() {
+            trace!(r#"Could not find "{}""#, paths.image_path.display());
             return Err(paths);
         }
+        trace!(r#"Formatting image for "{}""#, paths.entry_path.display());
 
-        let caption = fs::read_to_string(&paths.description_path).unwrap_or_default();
+        let caption = fs::read_to_string(&paths.description_path).unwrap_or_else(|err| {
+            warn!(
+                r#"No description found for "{}""#,
+                paths.entry_path.display()
+            );
+            warn!(
+                r#"Could not read "{}": {}"#,
+                paths.description_path.display(),
+                err
+            );
+            String::default()
+        });
         let pg = PicGridTemplate {
             name: paths.display_name.clone(),
             img: format!("/{}", paths.image_path.display()),
@@ -170,11 +212,19 @@ fn format_image_link(root: &Path) -> impl FnMut(Paths) -> core::result::Result<S
             caption,
         };
 
-        pg.render().map_err(|_e| paths)
+        pg.render().map_err(|err| {
+            warn!(
+                r#"Could not render template for "{}": {}"#,
+                paths.entry_path.display(),
+                err
+            );
+            paths
+        })
     }
 }
 
 fn format_links(paths: Paths) -> String {
+    trace!(r#"Formatting link for "{}""#, paths.entry_path.display());
     format!(
         r#"<li><a href="/{}">{}</a></li>"#,
         paths.entry_path.display(),

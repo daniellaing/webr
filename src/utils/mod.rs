@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
+use tracing::{debug, info, trace};
 
 use crate::utils::path::PathExt;
 
@@ -30,6 +31,7 @@ pub enum Error {
 }
 
 pub fn nav(root: impl AsRef<Path>) -> Result<String> {
+    trace!("Building nav");
     let nav_home_link = String::from(r#"<li><a href="/">Home</a></li>"#);
     Ok(read_dir(root)?
         .filter_map(core::result::Result::ok)
