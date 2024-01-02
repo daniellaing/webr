@@ -9,7 +9,7 @@ use axum::{
     extract::State,
     response::{Html, IntoResponse, Response},
 };
-use convert_case::{Case, Casing};
+use convert_case::{Boundary, Case, Casing};
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{
@@ -170,6 +170,7 @@ fn get_paths<'a>(
             .file_root()
             .ok_or(Error::FileRoot(e.path()))?
             .to_string()
+            .with_boundaries(&[Boundary::Underscore])
             .to_case(Case::Title);
         let description_path = root.join(request_path).join(format!(
             ".{}",
