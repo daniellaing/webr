@@ -2,6 +2,7 @@ pub mod iterator;
 pub mod path;
 
 use convert_case::{Case, Casing};
+use human_sort::compare;
 use std::{
     fs::{read_dir, DirEntry},
     path::{Path, PathBuf},
@@ -39,7 +40,7 @@ pub fn nav(root: impl AsRef<Path>) -> Result<String> {
         .map(to_display_and_fname)
         .filter_map(core::result::Result::ok)
         .collect::<Vec<_>>();
-    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    entries.sort_by(|a, b| compare(&a.0, &b.0));
     Ok(entries
         .into_iter()
         .map(|(display_name, path)| {
