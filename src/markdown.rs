@@ -98,6 +98,7 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
         PageTemplate::builder()
             .title(metadata.title)
             .last_modified(l.date())
+            .tags_opt(metadata.tags)
             .build(state.root, content)?
             .render()
             .map_err(templates::Error::Template)?,

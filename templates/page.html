@@ -44,7 +44,7 @@
     </header>
     <main>{{ content|safe }}</main>
     <footer>
-      {{ last_modified|safe }}
+      <div class="footer-info">{{ tags|safe }} {{ last_modified|safe }}</div>
       <div class="footer-wrapper">
         <a href="mailto:contact@daniellaing.com">contact@daniellaing.com</a>
         <ul>
