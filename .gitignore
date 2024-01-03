@@ -1,5 +1,6 @@
 debug/
 target/
+content/
 
 # Backups made by rustfmt
 **/*.rs.bk
@@ -7,4 +8,3 @@ target/
 # Direnv
 .direnv
 
-content/
