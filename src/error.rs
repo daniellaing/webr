@@ -3,9 +3,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Generic {0}")]
-    Generic(String),
-
     #[error(transparent)]
     Nav(#[from] crate::utils::Error),
     #[error(transparent)]

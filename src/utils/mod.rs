@@ -8,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error;
-use tracing::{debug, info, trace};
+use tracing::trace;
 
 use crate::utils::path::PathExt;
 
