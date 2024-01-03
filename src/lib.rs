@@ -2,12 +2,13 @@
 
 pub mod app_state;
 pub mod error;
+mod lectionary;
 mod markdown;
 pub mod prelude;
 mod templates;
 mod utils;
 
-use crate::prelude::*;
+use crate::{lectionary::lectionary, prelude::*};
 use askama::Template;
 use axum::{
     body::Body,
@@ -48,6 +49,7 @@ pub async fn start(state: AppState) -> Result<()> {
         Router::new()
             .route("/", get(get_root))
             .route("/*path", get(get_page))
+            .route("/lectionary", get(lectionary))
             .layer(TraceLayer::new_for_http())
             .with_state(state),
     );
@@ -104,16 +106,7 @@ async fn get_page(state: State<AppState>, Path(req_path): Path<PathBuf>) -> Resp
     let root = state.root.clone();
     get_page_wrapped(state, req_path)
         .await
-        .unwrap_or_else(|err| {
-            PageTemplate::builder()
-                .title("Daniel's Website")
-                .build(root, format!("{}<p>Error: {}</p>", ERROR_PAGE, err))
-                .and_then(|ep| Ok(ep.render()?))
-                .map(|ep| Html(ep).into_response())
-                .unwrap_or(
-                    (StatusCode::INTERNAL_SERVER_ERROR, Html(FALLBACK_ERROR)).into_response(),
-                )
-        })
+        .unwrap_or_else(|err| build_error_page(root, err))
 }
 
 async fn get_page_wrapped(state: State<AppState>, req_path: PathBuf) -> Result<Response> {
@@ -139,6 +132,15 @@ async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
     let body = Body::from_stream(ReaderStream::new(file));
     let r = Response::builder().body(body)?;
     Ok(r)
+}
+
+pub fn build_error_page(root: impl AsRef<std::path::Path>, err: Error) -> Response {
+    PageTemplate::builder()
+        .title("Daniel's Website")
+        .build(root, format!("{}<p>Error: {}</p>", ERROR_PAGE, err))
+        .and_then(|ep| Ok(ep.render()?))
+        .map(|ep| Html(ep).into_response())
+        .unwrap_or((StatusCode::INTERNAL_SERVER_ERROR, Html(FALLBACK_ERROR)).into_response())
 }
 
 static ERROR_PAGE: &str = r#"<h1>Oops!</h1><p>Something's not right with this page</p><p>It could be a problem with the server, or the page may simply not exist.</p><p>Try navigating back to the home page by clicking the "Home" button in the navigation bar.</p>"#;

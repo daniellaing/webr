@@ -7,6 +7,8 @@ pub enum Error {
     Nav(#[from] crate::utils::Error),
     #[error(transparent)]
     Markdown(#[from] crate::markdown::Error),
+    #[error(transparent)]
+    Lectionary(#[from] crate::lectionary::Error),
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
