@@ -30,7 +30,7 @@ time = "0.3.31"
 tracing = "0.1.40"
 tower-http = { version = "0.5.0", features = ["trace"] }
 tracing-subscriber = "0.3.18"
-human-sort = "0.2.2"
+natord = "1.0.9"
 
 [dev-dependencies]
 anyhow = "1"

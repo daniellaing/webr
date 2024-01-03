@@ -10,7 +10,6 @@ use axum::{
     response::{Html, IntoResponse, Response},
 };
 use convert_case::{Boundary, Case, Casing};
-use human_sort::compare;
 use pulldown_cmark::Parser;
 use pulldown_cmark_frontmatter::FrontmatterExtractor;
 use std::{
@@ -119,7 +118,7 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Re
         .filter_map(core::result::Result::ok)
         .collect::<Vec<_>>();
     // Sort
-    sorted_entries.sort_by(|a, b| compare(&a.display_name, &b.display_name));
+    sorted_entries.sort_by(|a, b| natord::compare(&a.display_name, &b.display_name));
 
     let (imgs, links) = sorted_entries
         .into_iter()
