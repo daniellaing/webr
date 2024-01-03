@@ -105,8 +105,8 @@ async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Resu
         spawn_blocking(|| markdown::render_dir(state, rel_path))
             .await?
             .map_err(Error::Markdown)
-    } else if ext == Some("md") {
-        spawn_blocking(|| markdown::render_markdown(state, rel_path))
+    } else if ext.is_none() {
+        spawn_blocking(move || markdown::render_markdown(state, rel_path.with_extension("md")))
             .await?
             .map_err(Error::Markdown)
     } else {

@@ -218,7 +218,7 @@ fn format_image_link(root: &Path) -> impl FnMut(Paths) -> core::result::Result<S
         let pg = PicGridTemplate {
             name: paths.display_name.clone(),
             img: format!("/{}", paths.image_path.display()),
-            link: format!("/{}", paths.entry_path.display()),
+            link: format!("/{}", paths.entry_path.with_extension("").display()),
             caption,
         };
 
@@ -237,7 +237,7 @@ fn format_links(paths: Paths) -> String {
     trace!(r#"Formatting link for "{}""#, paths.entry_path.display());
     format!(
         r#"<li><a href="/{}">{}</a></li>"#,
-        paths.entry_path.display(),
+        paths.entry_path.with_extension("").display(),
         paths.display_name
     )
 }
