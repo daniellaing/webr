@@ -8,19 +8,23 @@ mod templates;
 mod utils;
 
 use crate::prelude::*;
+use askama::Template;
 use axum::{
     body::Body,
+    error_handling::HandleErrorLayer,
     extract::{Path, State},
-    http::{Request, Uri},
-    response::{IntoResponse, Response},
+    http::{Request, StatusCode, Uri},
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router, ServiceExt,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
+use templates::{PageTemplate, PageTemplateBuilder};
+use time::{Date, Duration, OffsetDateTime};
 use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
-use tower::{util::MapRequestLayer, Layer};
+use tower::{util::MapRequestLayer, BoxError, Layer, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, trace};
 
@@ -93,25 +97,29 @@ where
     req
 }
 
-async fn get_root(state: State<AppState>) -> Result<impl IntoResponse> {
+async fn get_root(state: State<AppState>) -> Response {
     get_page(state, Path(PathBuf::new())).await
 }
 
-async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Result<Response> {
+async fn get_page(state: State<AppState>, Path(rel_path): Path<PathBuf>) -> Response {
     let fs_path = state.root.join(&rel_path);
+    let root = state.root.clone(); // For use in error
     let ext = rel_path.extension().and_then(std::ffi::OsStr::to_str);
 
     if fs_path.is_dir() {
         spawn_blocking(|| markdown::render_dir(state, rel_path))
-            .await?
-            .map_err(Error::Markdown)
+            .await
+            .map_err(|err| Error::TokioJoinError(err))
+            .and_then(|a| -> Result<Response> { Ok(a?) })
     } else if ext.is_none() {
         spawn_blocking(move || markdown::render_markdown(state, rel_path.with_extension("md")))
-            .await?
-            .map_err(Error::Markdown)
+            .await
+            .map_err(|err| Error::TokioJoinError(err))
+            .and_then(|a| -> Result<Response> { Ok(a?) })
     } else {
         get_file(state, rel_path).await
     }
+    .unwrap_or_else(|err| handle_error(root, err))
 }
 
 async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
@@ -120,4 +128,17 @@ async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Re
     let body = Body::from_stream(ReaderStream::new(file));
     let r = Response::builder().body(body)?;
     Ok(r)
+}
+
+fn handle_error(root: impl AsRef<std::path::Path>, err: Error) -> Response {
+    static CONTENT: &str = r#"<h1 style="text-align:center;">This page doesn't exist!</h1>"#;
+    Html(
+        PageTemplate::builder()
+            .title("Daniel's Website")
+            .last_modified(OffsetDateTime::now_utc().date())
+            .build(root, CONTENT)
+            .and_then(|p| Ok(p.render()?))
+            .expect("Failed to render error page"),
+    )
+    .into_response()
 }
