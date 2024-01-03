@@ -6,3 +6,5 @@ target/
 
 # Direnv
 .direnv
+
+content/
