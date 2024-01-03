@@ -123,7 +123,6 @@ pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Res
 
     let (imgs, links) = sorted_entries
         .into_iter()
-        .into_iter()
         .map(format_image_link(&state.root))
         // Separate any items which failed, just show link instead
         .partition_result();
