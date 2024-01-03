@@ -106,7 +106,7 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
     .into_response())
 }
 
-pub async fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
+pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
     debug!(r#"Serving directory "{}""#, req_path.display());
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
