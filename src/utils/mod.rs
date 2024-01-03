@@ -11,7 +11,7 @@ use tracing::trace;
 
 use crate::utils::path::PathExt;
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type R<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Could not get file root of {}", .0.display())]
@@ -30,7 +30,7 @@ pub enum Error {
     IO(#[from] std::io::Error),
 }
 
-pub fn nav(root: impl AsRef<Path>) -> Result<String> {
+pub fn nav(root: impl AsRef<Path>) -> R<String> {
     trace!("Building nav");
     let nav_home_link = String::from(r#"<li><a href="/">Home</a></li>"#);
     let mut entries = read_dir(root)?
@@ -51,7 +51,7 @@ pub fn nav(root: impl AsRef<Path>) -> Result<String> {
         .fold(nav_home_link, |acc, e| acc + &e))
 }
 
-pub fn is_shown(entry: &DirEntry) -> Result<bool> {
+pub fn is_shown(entry: &DirEntry) -> R<bool> {
     let hidden = entry
         .path()
         .is_hidden()
@@ -66,7 +66,7 @@ pub fn is_shown(entry: &DirEntry) -> Result<bool> {
     Ok(!hidden && (is_md || is_dir))
 }
 
-pub fn is_shown_dir_only(entry: &DirEntry) -> Result<bool> {
+pub fn is_shown_dir_only(entry: &DirEntry) -> R<bool> {
     let hidden = entry
         .path()
         .is_hidden()
@@ -76,7 +76,7 @@ pub fn is_shown_dir_only(entry: &DirEntry) -> Result<bool> {
     Ok(!hidden && is_dir)
 }
 
-fn to_display_and_fname(entry: DirEntry) -> Result<(String, PathBuf)> {
+fn to_display_and_fname(entry: DirEntry) -> R<(String, PathBuf)> {
     let path: PathBuf = entry
         .path()
         .file_name()

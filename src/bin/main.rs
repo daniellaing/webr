@@ -1,7 +1,7 @@
 use webr::{prelude::*, start};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> R<()> {
     tracing_subscriber::fmt()
         .pretty()
         .with_max_level(tracing::Level::TRACE)

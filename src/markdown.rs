@@ -21,7 +21,7 @@ use thiserror::Error;
 use time::OffsetDateTime;
 use tracing::{debug, error, trace, warn};
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type R<T> = core::result::Result<T, Error>;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Could not get file root of {}", .0.display())]
@@ -60,7 +60,7 @@ struct Paths {
     display_name: String,
 }
 
-pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> R<Response> {
     debug!(r#"Serving markdown for "{}""#, rel_path.display());
     let fs_path = state.root.join(rel_path).canonicalize()?;
     trace!(r#"Reading "{}""#, fs_path.display());
@@ -106,17 +106,17 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> Resu
     .into_response())
 }
 
-pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Response> {
+pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> R<Response> {
     debug!(r#"Serving directory "{}""#, req_path.display());
     let req_path_fs = state.root.join(&req_path).canonicalize()?;
     // Filter out only valid files
     trace!("Formatting images");
 
     let mut sorted_entries = read_dir(state.root.join(&req_path))?
-        .filter_map(core::result::Result::ok)
+        .filter_map(Result::ok)
         .filter(|e| is_shown(e).unwrap_or(false))
         .map(get_paths(&state.root, &req_path))
-        .filter_map(core::result::Result::ok)
+        .filter_map(Result::ok)
         .collect::<Vec<_>>();
     // Sort
     sorted_entries.sort_by(|a, b| natord::compare(&a.display_name, &b.display_name));
@@ -171,7 +171,7 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> Result<Re
 fn get_paths<'a>(
     root: &'a PathBuf,
     request_path: &'a PathBuf,
-) -> impl FnMut(fs::DirEntry) -> Result<Paths> + 'a {
+) -> impl FnMut(fs::DirEntry) -> R<Paths> + 'a {
     move |e| {
         trace!(r#"Getting paths for "{}""#, e.path().display());
         let entry_path = e.path().strip_prefix(root)?.to_path_buf();
@@ -195,7 +195,7 @@ fn get_paths<'a>(
     }
 }
 
-fn format_image_link(root: &Path) -> impl FnMut(Paths) -> core::result::Result<String, Paths> + '_ {
+fn format_image_link(root: &Path) -> impl FnMut(Paths) -> Result<String, Paths> + '_ {
     move |paths| {
         if !root.join(&paths.image_path).is_file() {
             trace!(r#"Could not find "{}""#, paths.image_path.display());

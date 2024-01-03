@@ -43,7 +43,7 @@ impl Default for Metadata {
     }
 }
 
-pub async fn start(state: AppState) -> Result<()> {
+pub async fn start(state: AppState) -> R<()> {
     debug!("Creating Router");
     let app = MapRequestLayer::new(normalize_path).layer(
         Router::new()
@@ -109,7 +109,7 @@ async fn get_page(state: State<AppState>, Path(req_path): Path<PathBuf>) -> Resp
         .unwrap_or_else(|err| build_error_page(root, err))
 }
 
-async fn get_page_wrapped(state: State<AppState>, req_path: PathBuf) -> Result<Response> {
+async fn get_page_wrapped(state: State<AppState>, req_path: PathBuf) -> R<Response> {
     let fs_path = state.root.join(&req_path);
     let ext = req_path.extension().and_then(std::ffi::OsStr::to_str);
 
@@ -126,7 +126,7 @@ async fn get_page_wrapped(state: State<AppState>, req_path: PathBuf) -> Result<R
     }
 }
 
-async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> Result<Response> {
+async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> R<Response> {
     trace!(r#"Serving "{}""#, rel_path.display());
     let file = File::open(state.root.join(rel_path)).await?;
     let body = Body::from_stream(ReaderStream::new(file));
