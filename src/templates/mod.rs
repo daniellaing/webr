@@ -19,26 +19,26 @@ pub enum Error {
 #[template(path = "page.html")]
 pub struct PageTemplate {
     title: String,
-    last_modified: Date,
+    last_modified: String,
     content: String,
     nav: String,
 }
 
 impl PageTemplate {
-    pub fn builder() -> PageTemplateBuilder<NoTitle, NoLM> {
+    pub fn builder() -> PageTemplateBuilder<NoTitle> {
         debug!(r#"Building page template"#);
         PageTemplateBuilder::default()
     }
 }
 
 #[derive(Debug, Default)]
-pub struct PageTemplateBuilder<T, M> {
+pub struct PageTemplateBuilder<T> {
     title: T,
-    last_modified: M,
+    last_modified: Option<Date>,
 }
 
-impl<M> PageTemplateBuilder<NoTitle, M> {
-    pub fn title(self, title: impl Into<String>) -> PageTemplateBuilder<Title, M> {
+impl PageTemplateBuilder<NoTitle> {
+    pub fn title(self, title: impl Into<String>) -> PageTemplateBuilder<Title> {
         let title = title.into();
         trace!(r#"Adding page title: "{}""#, &title);
         PageTemplateBuilder {
@@ -48,22 +48,26 @@ impl<M> PageTemplateBuilder<NoTitle, M> {
     }
 }
 
-impl<T> PageTemplateBuilder<T, NoLM> {
-    pub fn last_modified(self, last_modified: impl Into<Date>) -> PageTemplateBuilder<T, LM> {
+impl<T> PageTemplateBuilder<T> {
+    pub fn last_modified(self, last_modified: impl Into<Option<Date>>) -> PageTemplateBuilder<T> {
         trace!("Adding page last modified date");
         PageTemplateBuilder {
             title: self.title,
-            last_modified: LM(last_modified.into()),
+            last_modified: last_modified.into(),
         }
     }
 }
 
-impl PageTemplateBuilder<Title, LM> {
+impl PageTemplateBuilder<Title> {
     pub fn build(self, root: impl AsRef<Path>, content: impl Into<String>) -> R<PageTemplate> {
+        let last_modified = match self.last_modified {
+            Some(d) => format!(r#"<p class="last_modified">Last updated: {}</p>"#, d),
+            None => String::new(),
+        };
         let pt = PageTemplate {
             title: self.title.0,
             content: content.into(),
-            last_modified: self.last_modified.0,
+            last_modified,
             nav: nav(root)?,
         };
         Ok(pt)
@@ -75,7 +79,3 @@ impl PageTemplateBuilder<Title, LM> {
 pub struct NoTitle;
 #[derive(Default, Clone)]
 pub struct Title(String);
-#[derive(Default, Clone)]
-pub struct NoLM;
-#[derive(Clone)]
-pub struct LM(Date);

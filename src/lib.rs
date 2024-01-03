@@ -107,7 +107,6 @@ async fn get_page(state: State<AppState>, Path(req_path): Path<PathBuf>) -> Resp
         .unwrap_or_else(|err| {
             PageTemplate::builder()
                 .title("Daniel's Website")
-                .last_modified(OffsetDateTime::now_utc().date())
                 .build(root, format!("{}<p>Error: {}</p>", ERROR_PAGE, err))
                 .and_then(|ep| Ok(ep.render()?))
                 .map(|ep| Html(ep).into_response())

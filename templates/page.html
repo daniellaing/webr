@@ -43,22 +43,24 @@
       </div>
     </header>
     <main>{{ content|safe }}</main>
-    <p class="last_modified">Last updated: {{ last_modified }}</p>
     <footer>
-      <a href="mailto:contact@daniellaing.com">contact@daniellaing.com</a>
-      <ul>
-        <li>
-          <a href="https://github.com/Bodleum" , target="_blank">GitHub</a>
-        </li>
-        <li>
-          <a href="https://gitlab.com/Bodleum" , target="_blank">GitLab</a>
-        </li>
-        <li>
-          <a href="https://www.instagram.com/_thebakerdan" , target="_blank"
-            >Instagram</a
-          >
-        </li>
-      </ul>
+      {{ last_modified|safe }}
+      <div class="footer-wrapper">
+        <a href="mailto:contact@daniellaing.com">contact@daniellaing.com</a>
+        <ul>
+          <li>
+            <a href="https://github.com/Bodleum" , target="_blank">GitHub</a>
+          </li>
+          <li>
+            <a href="https://gitlab.com/Bodleum" , target="_blank">GitLab</a>
+          </li>
+          <li>
+            <a href="https://www.instagram.com/_thebakerdan" , target="_blank"
+              >Instagram</a
+            >
+          </li>
+        </ul>
+      </div>
     </footer>
   </body>
 </html>
