@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 use webr::{prelude::*, start};
 
 #[tokio::main]

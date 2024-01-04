@@ -1,4 +1,5 @@
 #![allow(unused)]
+#![recursion_limit = "512"]
 
 pub mod app_state;
 pub mod error;

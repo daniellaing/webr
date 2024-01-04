@@ -8,9 +8,13 @@ use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse, Response},
 };
+use html::tables::Table;
 use std::path::PathBuf;
 use thiserror::Error;
-use time::{Date, OffsetDateTime};
+use time::{
+    macros::{date, format_description},
+    Date, Month, OffsetDateTime,
+};
 use tokio::task::spawn_blocking;
 
 pub type R<T> = core::result::Result<T, Error>;
@@ -18,6 +22,17 @@ pub type R<T> = core::result::Result<T, Error>;
 pub enum Error {
     #[error(transparent)]
     Template(#[from] templates::Error),
+
+    #[error("Failed to calculate date of Easter")]
+    Easter(#[from] time::error::ComponentRange),
+}
+
+#[derive(Debug)]
+struct LecEntry {
+    date: Option<Date>,
+    morning: [&'static str; 3],
+    evening: [&'static str; 3],
+    dscr: Option<&'static str>,
 }
 
 pub async fn lectionary(state: State<AppState>) -> Response {
@@ -28,73 +43,216 @@ pub async fn lectionary(state: State<AppState>) -> Response {
 }
 
 async fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
+    let year = OffsetDateTime::now_utc().year();
+
+    let lec = lec(year)?;
+    let l = Table::builder()
+        .table_head(|th| {
+            th.table_row(|tr| {
+                tr.table_header(|thdr| thdr.text("Date"));
+                tr.table_header(|thdr| thdr.text("Morning").colspan("3"));
+                tr.table_header(|thdr| thdr.text("Evening").colspan("3"))
+            })
+        })
+        .table_body(|tb| {
+            for le in lec.iter() {
+                let dscr = match le.dscr {
+                    Some(d) => format!("<br>{}", d),
+                    None => String::new(),
+                };
+                let date = match le.date {
+                    Some(d) => {
+                        let f = format_description!("[day padding:none] [month repr:short]");
+                        format!("{}{dscr}", d.format(&f).expect("format error"))
+                    }
+                    None => format!("No date{dscr}"),
+                };
+                tb.table_row(|tr| {
+                    tr.table_cell(|tc| tc.text(date).class("right-border"));
+                    tr.table_cell(|tc| tc.text(le.morning[0]));
+                    tr.table_cell(|tc| tc.text(le.morning[1]));
+                    tr.table_cell(|tc| tc.text(le.morning[2]).class("right-border"));
+                    tr.table_cell(|tc| tc.text(le.evening[0]));
+                    tr.table_cell(|tc| tc.text(le.evening[1]));
+                    tr.table_cell(|tc| tc.text(le.evening[2]))
+                });
+            }
+            tb
+        })
+        .build();
+
+    let content = format!(
+        r#"Easter: {}<br>Entries: {}<br>{}"#,
+        easter(year)?,
+        lec.len(),
+        l.to_string()
+    );
+
     Ok(Html(
         PageTemplate::builder()
             .title("Daniel's Lectionary")
             .last_modified(OffsetDateTime::now_utc().date())
             .tags(vec![String::from("lectionary"), String::from("bible")])
-            .build(&state.root, "Lectionary")?
+            .build(&state.root, content)?
             .render()
             .map_err(templates::Error::Template)?,
     )
     .into_response())
 }
 
+fn lec(year: i32) -> R<Vec<LecEntry>> {
+    let mut lec = lec_skeleton(year);
+    let easter: usize = (easter(year)?.ordinal() - 1) as usize; // -1 to make 0 based
+
+    // Insert special days
+    // TODO: Fix when the days are
+    // Go backwards to get indices right?
+
+    lec.insert(
+        easter - 46,
+        LecEntry {
+            date: None,
+            morning: EASTER[0][0],
+            evening: EASTER[0][1],
+            dscr: Some("Ash Wednesday"),
+        },
+    );
+
+    lec.insert(
+        easter - 3,
+        LecEntry {
+            date: None,
+            morning: EASTER[1][0],
+            evening: EASTER[1][1],
+            dscr: Some("Maundy Thursday"),
+        },
+    );
+
+    lec.insert(
+        easter - 2,
+        LecEntry {
+            date: None,
+            morning: EASTER[2][0],
+            evening: EASTER[2][1],
+            dscr: Some("Good Friday"),
+        },
+    );
+
+    lec.insert(
+        easter - 1,
+        LecEntry {
+            date: None,
+            morning: EASTER[3][0],
+            evening: EASTER[3][1],
+            dscr: Some("Holy Saturday"),
+        },
+    );
+
+    lec.insert(
+        easter,
+        LecEntry {
+            date: None,
+            morning: EASTER[4][0],
+            evening: EASTER[4][1],
+            dscr: Some("Easter Sunday"),
+        },
+    );
+
+    lec.insert(
+        easter + 39,
+        LecEntry {
+            date: None,
+            morning: EASTER[5][0],
+            evening: EASTER[5][1],
+            dscr: Some("Ascension Day"),
+        },
+    );
+
+    // Add dates
+    let mut date = Date::from_calendar_date(year, Month::January, 1)?;
+    for e in lec.iter_mut() {
+        e.date = Some(date);
+        date = date
+            .next_day()
+            .unwrap_or(Date::from_calendar_date(year, Month::January, 1)?);
+    }
+
+    Ok(lec)
+}
+
+fn lec_skeleton(year: i32) -> Vec<LecEntry> {
+    let mut l = MORNING
+        .iter()
+        .zip(EVENING.iter())
+        .enumerate()
+        .map(|(i, (m, e))| {
+            let psalm_idx = i % 30;
+            let morning = [PSALM_MORNING[psalm_idx], m[0], m[1]];
+            let evening = [PSALM_EVENING[psalm_idx], e[0], e[1]];
+
+            LecEntry {
+                date: None,
+                morning,
+                evening,
+                dscr: None,
+            }
+        })
+        .collect::<Vec<_>>();
+    if !time::util::is_leap_year(year) {
+        l.remove(58);
+    }
+    l
+}
+
+fn easter(year: i32) -> R<Date> {
+    let aa = year % 19;
+    let bb = year / 100;
+    let cc = year % 100;
+    let dd = bb / 4;
+    let ee = bb % 4;
+    let ff = (bb + 8) / 25;
+    let gg = (bb - ff + 1) / 3;
+    let hh = (19 * aa + bb - dd - gg + 15) % 30;
+    let ii = cc / 4;
+    let kk = cc % 4;
+    let ll = (32 + 2 * ee + 2 * ii - hh - kk) % 7;
+    let mm = (aa + 11 * hh + 22 * ll) / 451;
+    let month = ((hh + ll - 7 * mm + 114) / 31) as u8;
+    let day = (hh + ll - 7 * mm + 114) % 31 + 1;
+    Date::from_calendar_date(year, month.try_into()?, day as u8).map_err(Error::Easter)
+}
+
 // ---------------
 //      DATA
 // ---------------
-static EASTER: [[&'static str; 6]; 6] = [
+static EASTER: [[[&'static str; 3]; 2]; 6] = [
     [
-        "Ps. 38",
-        "Isa. 58:1-12",
-        "Luke 18:9-14",
-        "Ps. 6, 32",
-        "Jonah 3",
-        "1 Cor. 9:24-27",
+        ["Ps. 38", "Isa. 58:1-12", "Luke 18:9-14"],
+        ["Ps. 6, 32", "Jonah 3", "1 Cor. 9:24-27"],
     ],
     [
-        "Ps. 41",
-        "Dan. 9",
-        "John 13:1-20",
-        "Ps. 142 - 143",
-        "Jer. 31",
-        "John 13:21-38",
+        ["Ps. 41", "Dan. 9", "John 13:1-20"],
+        ["Ps. 142 - 143", "Jer. 31", "John 13:21-38"],
     ],
     [
-        "Ps. 40",
-        "Gen. 22:1-36",
-        "Luke 23:18-49",
-        "Ps. 102",
-        "Isa. 53",
-        "1 Pet. 2",
+        ["Ps. 40", "Gen. 22:1-36", "Luke 23:18-49"],
+        ["Ps. 102", "Isa. 53", "1 Pet. 2"],
     ],
     [
-        "Ps. 88",
-        "Zech. 9",
-        "Luke 23:50-56",
-        "Ps. 91",
-        "Ex. 13",
-        "Heb. 4",
+        ["Ps. 88", "Zech. 9", "Luke 23:50-56"],
+        ["Ps. 91", "Ex. 13", "Heb. 4"],
     ],
     [
-        "Ps. 118",
-        "Ex. 14",
-        "Luke 24:1-49",
-        "Ps. 113 - 114",
-        "Ex. 15",
-        "Rom. 6",
+        ["Ps. 118", "Ex. 14", "Luke 24:1-49"],
+        ["Ps. 113 - 114", "Ex. 15", "Rom. 6"],
     ],
     [
-        "Ps. 8, 47",
-        "2 Kings 2",
-        "Luke 24:44-53",
-        "Ps. 21, 24",
-        "Heb 8",
-        "Eph. 4:1-17",
+        ["Ps. 8, 47", "2 Kings 2", "Luke 24:44-53"],
+        ["Ps. 21, 24", "Heb 8", "Eph. 4:1-17"],
     ],
 ];
 
-static PSALM_MORNING: [&'static str; 31] = [
+static PSALM_MORNING: [&'static str; 30] = [
     "Ps. 1 - 5",
     "Ps. 9 - 11",
     "Ps. 15 - 17",
@@ -125,10 +283,9 @@ static PSALM_MORNING: [&'static str; 31] = [
     "Ps. 132 - 135",
     "Ps. 139 - 141",
     "Ps. 144 - 146",
-    "Ps. 144 - 146",
 ];
 
-static PSALM_EVENING: [&'static str; 31] = [
+static PSALM_EVENING: [&'static str; 30] = [
     "Ps. 6 - 8",
     "Ps. 12 - 14",
     "Ps. 18",
@@ -158,7 +315,6 @@ static PSALM_EVENING: [&'static str; 31] = [
     "Ps. 126 - 131",
     "Ps. 136 - 138",
     "Ps. 142 - 143",
-    "Ps. 147 - 150",
     "Ps. 147 - 150",
 ];
 
