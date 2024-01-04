@@ -1,5 +1,5 @@
 use crate::{
-    build_error_page,
+    build_error_page, markdown,
     prelude::*,
     templates::{self, PageTemplate},
 };
@@ -8,7 +8,7 @@ use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse, Response},
 };
-use html::tables::Table;
+use html::{content::Heading2, forms::Button, tables::Table};
 use std::path::PathBuf;
 use thiserror::Error;
 use time::{
@@ -22,6 +22,8 @@ pub type R<T> = core::result::Result<T, Error>;
 pub enum Error {
     #[error(transparent)]
     Template(#[from] templates::Error),
+    #[error(transparent)]
+    Markdown(#[from] markdown::Error),
 
     #[error("Failed to calculate date of Easter")]
     Easter(#[from] time::error::ComponentRange),
@@ -46,10 +48,10 @@ async fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
     let year = OffsetDateTime::now_utc().year();
 
     let lec = lec(year)?;
-    let l = Table::builder()
+    let lec_table = Table::builder()
         .table_head(|th| {
             th.table_row(|tr| {
-                tr.table_header(|thdr| thdr.text("Date"));
+                tr.table_header(|thdr| thdr.text(format!("Date ({})", year)));
                 tr.table_header(|thdr| thdr.text("Morning").colspan("3"));
                 tr.table_header(|thdr| thdr.text("Evening").colspan("3"))
             })
@@ -79,21 +81,62 @@ async fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
             }
             tb
         })
-        .build();
+        .class("lectionary")
+        .build()
+        .to_string();
 
-    let content = format!(
-        r#"Easter: {}<br>Entries: {}<br>{}"#,
-        easter(year)?,
-        lec.len(),
-        l.to_string()
-    );
+    let collapse_button = Button::builder()
+        .type_("button")
+        .class("collapsible")
+        .text(
+            Heading2::builder()
+                .text("Full Lectionary")
+                .build()
+                .to_string(),
+        )
+        .build()
+        .to_string();
+
+    let today = OffsetDateTime::now_utc().date();
+    let lec_today = Table::builder()
+        .table_head(|th| {
+            th.table_row(|tr| {
+                tr.table_header(|thdr| thdr.text(format!("Date ({})", year)));
+                tr.table_header(|thdr| thdr.text("Morning").colspan("3"));
+                tr.table_header(|thdr| thdr.text("Evening").colspan("3"))
+            })
+        })
+        .table_body(|tb| {
+            tb.table_row(|tr| {
+                tr.table_cell(|tc| {
+                    let f = format_description!("[day padding:none] [month repr:short]");
+                    tc.text(format!(
+                        "Today's Reading ({})",
+                        today.format(&f).expect("format error")
+                    ))
+                    .class("right-border")
+                });
+                tr.table_cell(|tc| tc.text(lec[(today.ordinal() - 1) as usize].morning[0]));
+                tr.table_cell(|tc| tc.text(lec[(today.ordinal() - 1) as usize].morning[1]));
+                tr.table_cell(|tc| {
+                    tc.text(lec[(today.ordinal() - 1) as usize].morning[2])
+                        .class("right-border")
+                });
+                tr.table_cell(|tc| tc.text(lec[(today.ordinal() - 1) as usize].evening[0]));
+                tr.table_cell(|tc| tc.text(lec[(today.ordinal() - 1) as usize].evening[1]));
+                tr.table_cell(|tc| tc.text(lec[(today.ordinal() - 1) as usize].evening[2]))
+            })
+        })
+        .build()
+        .to_string();
+
+    let (page, md) = markdown::get_markdown_contents(&state, PathBuf::from("lectionary.md"))?;
+    let (pre, post) = md.split_once("</h1>").expect("TODO");
+    // let content = format!(r#"{pre}</h1>{lec_today}{post}{collapse_button}{lec_table}"#,);
+    let content = format!(r#"{pre}</h1>{lec_today}{post}<h2>Full Lectionary</h2>{lec_table}"#,);
 
     Ok(Html(
-        PageTemplate::builder()
-            .title("Daniel's Lectionary")
-            .last_modified(OffsetDateTime::now_utc().date())
-            .tags(vec![String::from("lectionary"), String::from("bible")])
-            .build(&state.root, content)?
+        page.build(&state.root, content)?
             .render()
             .map_err(templates::Error::Template)?,
     )
