@@ -1,6 +1,6 @@
 use crate::{
     prelude::*,
-    templates::{self, PageTemplate},
+    templates::{self, PageTemplate, PageTemplateBuilder},
     utils::{is_shown, iterator::PartitionResult, path::PathExt},
     Metadata,
 };
@@ -60,8 +60,10 @@ struct Paths {
     display_name: String,
 }
 
-pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> R<Response> {
-    debug!(r#"Serving markdown for "{}""#, rel_path.display());
+pub fn get_markdown_contents(
+    state: &AppState,
+    rel_path: PathBuf,
+) -> R<(PageTemplateBuilder<templates::Title>, String)> {
     let fs_path = state.root.join(rel_path).canonicalize()?;
     trace!(r#"Reading "{}""#, fs_path.display());
     let md = fs::read_to_string(&fs_path)?;
@@ -94,12 +96,20 @@ pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> R<Re
             error!("Could not get last modified date: {err}");
             OffsetDateTime::now_utc()
         });
-    Ok(Html(
+    Ok((
         PageTemplate::builder()
             .title(metadata.title)
             .last_modified(l.date())
-            .tags_opt(metadata.tags)
-            .build(state.root, content)?
+            .tags_opt(metadata.tags),
+        content,
+    ))
+}
+
+pub fn render_markdown(State(state): State<AppState>, rel_path: PathBuf) -> R<Response> {
+    debug!(r#"Serving markdown for "{}""#, rel_path.display());
+    let (page, content) = get_markdown_contents(&state, rel_path)?;
+    Ok(Html(
+        page.build(state.root, content)?
             .render()
             .map_err(templates::Error::Template)?,
     )
