@@ -6,7 +6,7 @@ use tracing::trace;
 pub struct AppState {
     pub root: PathBuf,
     pub md_options: Options,
-    pub port: u32,
+    pub port: u16,
 }
 
 impl AppState {
@@ -52,7 +52,7 @@ impl AppStateBuilder<Root, Port> {
 }
 
 impl<R> AppStateBuilder<R, NoPort> {
-    pub fn port(self, port: u32) -> AppStateBuilder<R, Port> {
+    pub fn port(self, port: u16) -> AppStateBuilder<R, Port> {
         trace!("Setting port");
         AppStateBuilder {
             root: self.root,
@@ -78,4 +78,4 @@ pub struct Root(PathBuf);
 #[derive(Default, Clone)]
 pub struct NoPort;
 #[derive(Default, Clone)]
-pub struct Port(u32);
+pub struct Port(u16);

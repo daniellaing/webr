@@ -20,7 +20,7 @@ use axum::{
 };
 use clap::Parser;
 use serde::Deserialize;
-use std::path::PathBuf;
+use std::{net::Ipv4Addr, path::PathBuf};
 use templates::PageTemplate;
 use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
@@ -34,7 +34,7 @@ pub struct Args {
     pub content: String,
 
     #[arg(short, long, default_value_t = 14958)]
-    pub port: u32,
+    pub port: u16,
 }
 
 #[derive(Debug, Deserialize)]
@@ -53,6 +53,8 @@ impl Default for Metadata {
 }
 
 pub async fn start(state: AppState) -> R<()> {
+    let listener = TcpListener::bind((Ipv4Addr::new(0, 0, 0, 0), state.port)).await?;
+
     debug!("Creating Router");
     let app = MapRequestLayer::new(normalize_path).layer(
         Router::new()
@@ -62,7 +64,7 @@ pub async fn start(state: AppState) -> R<()> {
             .layer(TraceLayer::new_for_http())
             .with_state(state),
     );
-    let listener = TcpListener::bind("0.0.0.0:14958").await?;
+
     tracing::info!("Listening on http://{}", listener.local_addr()?);
     axum::serve(listener, app.into_make_service()).await?;
     Ok(())
