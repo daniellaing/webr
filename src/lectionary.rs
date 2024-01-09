@@ -1,20 +1,17 @@
 use crate::{
     build_error_page, markdown,
     prelude::*,
-    templates::{self, PageTemplate},
+    templates::{self},
 };
 use askama::Template;
 use axum::{
-    extract::{Path, State},
+    extract::State,
     response::{Html, IntoResponse, Response},
 };
-use html::{content::Heading2, forms::Button, tables::Table};
+use html::tables::Table;
 use std::path::PathBuf;
 use thiserror::Error;
-use time::{
-    macros::{date, format_description},
-    Date, Month, OffsetDateTime,
-};
+use time::{macros::format_description, Date, Month, OffsetDateTime};
 use tokio::task::spawn_blocking;
 
 pub type R<T> = core::result::Result<T, Error>;
@@ -27,6 +24,9 @@ pub enum Error {
 
     #[error("Failed to calculate date of Easter")]
     Easter(#[from] time::error::ComponentRange),
+
+    #[error(transparent)]
+    TokioJoinError(#[from] tokio::task::JoinError),
 }
 
 #[derive(Debug)]
@@ -39,12 +39,14 @@ struct LecEntry {
 
 pub async fn lectionary(state: State<AppState>) -> Response {
     let root = state.root.clone();
-    lectionary_wrapped(state)
+    spawn_blocking(|| lectionary_wrapped(state))
         .await
+        .map_err(Error::TokioJoinError)
+        .and_then(|res| res)
         .unwrap_or_else(|err| build_error_page(root, err.into()))
 }
 
-async fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
+fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
     let year = OffsetDateTime::now_utc().year();
 
     let lec = lec(year)?;
@@ -85,17 +87,18 @@ async fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
         .build()
         .to_string();
 
-    let collapse_button = Button::builder()
-        .type_("button")
-        .class("collapsible")
-        .text(
-            Heading2::builder()
-                .text("Full Lectionary")
-                .build()
-                .to_string(),
-        )
-        .build()
-        .to_string();
+    // TODO: Button to collapse full lectionary table
+    // let collapse_button = Button::builder()
+    //     .type_("button")
+    //     .class("collapsible")
+    //     .text(
+    //         Heading2::builder()
+    //             .text("Full Lectionary")
+    //             .build()
+    //             .to_string(),
+    //     )
+    //     .build()
+    //     .to_string();
 
     let today = OffsetDateTime::now_utc().date();
     let lec_today = Table::builder()
@@ -268,7 +271,7 @@ fn easter(year: i32) -> R<Date> {
 // ---------------
 //      DATA
 // ---------------
-static EASTER: [[[&'static str; 3]; 2]; 6] = [
+static EASTER: [[[&str; 3]; 2]; 6] = [
     [
         ["Ps. 38", "Isa. 58:1-12", "Luke 18:9-14"],
         ["Ps. 6, 32", "Jonah 3", "1 Cor. 9:24-27"],
@@ -295,7 +298,7 @@ static EASTER: [[[&'static str; 3]; 2]; 6] = [
     ],
 ];
 
-static PSALM_MORNING: [&'static str; 30] = [
+static PSALM_MORNING: [&str; 30] = [
     "Ps. 1 - 5",
     "Ps. 9 - 11",
     "Ps. 15 - 17",
@@ -328,7 +331,7 @@ static PSALM_MORNING: [&'static str; 30] = [
     "Ps. 144 - 146",
 ];
 
-static PSALM_EVENING: [&'static str; 30] = [
+static PSALM_EVENING: [&str; 30] = [
     "Ps. 6 - 8",
     "Ps. 12 - 14",
     "Ps. 18",
@@ -361,7 +364,7 @@ static PSALM_EVENING: [&'static str; 30] = [
     "Ps. 147 - 150",
 ];
 
-static MORNING: [[&'static str; 2]; 360] = [
+static MORNING: [[&str; 2]; 360] = [
     ["Gen. 1", "John 1"],
     ["Gen. 3", "John 2"],
     ["Gen. 6 - 7", "John 3"],
@@ -724,7 +727,7 @@ static MORNING: [[&'static str; 2]; 360] = [
     ["Isa. 65", "3 John"],
 ];
 
-static EVENING: [[&'static str; 2]; 360] = [
+static EVENING: [[&str; 2]; 360] = [
     ["Gen. 2", "1 Pet. 1"],
     ["Gen. 4 - 5", "1 Pet. 2"],
     ["Gen. 8 - 9", "1 Pet. 3"],

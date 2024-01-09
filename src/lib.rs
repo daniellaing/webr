@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![recursion_limit = "512"]
 
 pub mod app_state;
@@ -17,12 +16,11 @@ use axum::{
     http::{Request, StatusCode, Uri},
     response::{Html, IntoResponse, Response},
     routing::get,
-    BoxError, Router, ServiceExt,
+    Router, ServiceExt,
 };
 use serde::Deserialize;
 use std::path::PathBuf;
 use templates::PageTemplate;
-use time::OffsetDateTime;
 use tokio::{fs::File, net::TcpListener, task::spawn_blocking};
 use tokio_util::io::ReaderStream;
 use tower::{util::MapRequestLayer, Layer};
