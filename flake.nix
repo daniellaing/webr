@@ -7,10 +7,27 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        deploy = pkgs.writeShellApplication {
+          name = "deploy";
+          runtimeInputs = with pkgs; [ openssh ];
+          text = ''
+            ssh root@daniellaing.com <<'EOF'
+              rm -rf /tmp/webr
+
+              git clone /home/git/webr.git /tmp/webr
+              cd /tmp/webr
+              cargo install --path . --root /usr/local
+
+              systemctl restart webr.service
+            EOF
+          '';
+        };
       in
       {
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            deploy
+
             rustc
             cargo
             rust-analyzer

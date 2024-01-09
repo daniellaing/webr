@@ -1,6 +1,7 @@
 debug/
 target/
 content/
+content
 
 # Backups made by rustfmt
 **/*.rs.bk
