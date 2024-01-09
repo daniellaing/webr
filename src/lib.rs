@@ -18,6 +18,7 @@ use axum::{
     routing::get,
     Router, ServiceExt,
 };
+use clap::Parser;
 use serde::Deserialize;
 use std::path::PathBuf;
 use templates::PageTemplate;
@@ -26,6 +27,15 @@ use tokio_util::io::ReaderStream;
 use tower::{util::MapRequestLayer, Layer};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, trace};
+
+#[derive(Parser, Debug)]
+pub struct Args {
+    #[arg(short, long)]
+    pub content: String,
+
+    #[arg(short, long, default_value_t = 14958)]
+    pub port: u32,
+}
 
 #[derive(Debug, Deserialize)]
 struct Metadata {

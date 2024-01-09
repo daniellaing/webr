@@ -1,5 +1,6 @@
 #![recursion_limit = "512"]
 
+use clap::Parser;
 use webr::{prelude::*, start};
 
 #[tokio::main]
@@ -9,8 +10,11 @@ async fn main() -> R<()> {
         .with_max_level(tracing::Level::TRACE)
         .init();
 
+    let args = Args::parse();
+
     let state = AppState::builder()
-        .root("./content")
+        .root(args.content)
+        .port(args.port)
         .md_options(Options::all())
         .build();
 

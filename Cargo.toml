@@ -32,6 +32,7 @@ tower-http = { version = "0.5.0", features = ["trace"] }
 tracing-subscriber = "0.3.18"
 natord = "1.0.9"
 html = "0.6.3"
+clap = { version = "4.4.14", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = "1"
