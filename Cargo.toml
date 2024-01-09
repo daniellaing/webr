@@ -10,7 +10,7 @@ name = "webr"
 path = "src/lib.rs"
 
 [[bin]]
-name = "main"
+name = "webr"
 path = "src/bin/main.rs"
 
 [dependencies]
