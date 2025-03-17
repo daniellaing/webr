@@ -166,7 +166,8 @@ pub fn render_dir(State(state): State<AppState>, req_path: PathBuf) -> R<Respons
             .build(
                 state.root,
                 format!(
-                    r#"<h1>{}</h1><div class="pic-grid">{}</div><ul>{}</ul>"#,
+                    r#"<div id="{}"><h1>{}</h1><div><div class="pic-grid">{}</div><div class="links"><ul class="links-list">{}</ul></div></div></div>"#,
+                    req_path.display(),
                     title,
                     imgs.join(""),
                     links
