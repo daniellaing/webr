@@ -189,7 +189,7 @@ fn get_paths<'a>(
             .file_root()
             .ok_or(Error::FileRoot(e.path()))?
             .to_string()
-            .with_boundaries(&[Boundary::Underscore])
+            .with_boundaries(&[Boundary::UNDERSCORE])
             .to_case(Case::Title);
         let description_path = root.join(request_path).join(format!(
             ".{}",

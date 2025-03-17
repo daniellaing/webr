@@ -59,7 +59,7 @@ pub async fn start(state: AppState) -> R<()> {
     let app = MapRequestLayer::new(normalize_path).layer(
         Router::new()
             .route("/", get(get_root))
-            .route("/*path", get(get_page))
+            .route("/{*path}", get(get_page))
             .route("/lectionary", get(lectionary))
             .layer(TraceLayer::new_for_http())
             .with_state(state),
