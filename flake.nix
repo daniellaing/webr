@@ -32,7 +32,14 @@
             EOF
           '';
         };
+
+        webr = pkgs.callPackage ./default.nix {};
       in {
+        packages = {
+          inherit webr;
+          default = webr;
+        };
+
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             deploy
@@ -55,6 +62,7 @@
 
           shellHook = ''
             echo "Let's get Rusty" | "${pkgs.lolcat}/bin/lolcat"
+            echo "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}"
           '';
         };
       };
