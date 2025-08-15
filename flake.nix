@@ -17,21 +17,28 @@
       systems = nixpkgs.lib.systems.flakeExposed;
 
       perSystem = {pkgs, ...}: let
-        deploy = pkgs.writeShellApplication {
-          name = "deploy";
-          runtimeInputs = with pkgs; [openssh];
-          text = ''
-            ssh root@daniellaing.com <<'EOF'
-              rm -rf /tmp/webr
-
-              git clone /home/git/webr.git /tmp/webr
-              cd /tmp/webr
-              cargo install --path . --root /usr/local
-
-              systemctl restart webr.service
-            EOF
-          '';
-        };
+        deploy = pkgs.callPackage ({
+          writeShellApplication,
+          openssh,
+          cargo,
+          patchelf,
+        }:
+          writeShellApplication {
+            name = "deploy";
+            runtimeInputs = [openssh cargo patchelf];
+            text = ''
+              cargo clean
+              cargo build --release
+              patchelf --set-interpreter /usr/lib64/ld-linux-x86_64.so.2 target/release/webr
+              scp target/release/webr root@daniellaing.com:~
+              ssh root@daniellaing.com <<'EOF'
+                chown root:root ~/webr
+                chmod 511 ~/webr
+                mv -u ~/webr /usr/local/bin/webr
+                systemctl restart webr.service
+              EOF
+            '';
+          }) {};
 
         webr = pkgs.callPackage ./default.nix {};
       in {
