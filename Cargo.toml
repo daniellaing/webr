@@ -17,7 +17,7 @@ path = "src/bin/main.rs"
 thiserror = "2"
 axum = { version = "0.8", features = ["macros"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs"] }
-pulldown-cmark = "0.12"
+pulldown-cmark = "0.13"
 pulldown-cmark-frontmatter = "0.4"
 toml = "0.9"
 serde = { version = "1", features = ["derive"] }
