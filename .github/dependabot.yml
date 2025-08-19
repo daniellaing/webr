@@ -11,3 +11,9 @@ updates:
       interval: "weekly"
     assignees:
       - daniellaing
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - daniellaing
