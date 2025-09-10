@@ -27,9 +27,9 @@
             name = "deploy";
             runtimeInputs = [openssh cargo patchelf];
             text = ''
-              cargo clean
+              # cargo clean
               cargo build --release
-              patchelf --set-interpreter /usr/lib64/ld-linux-x86_64.so.2 target/release/webr
+              patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 target/release/webr
               scp target/release/webr root@daniellaing.com:~
               ssh root@daniellaing.com <<'EOF'
                 chown root:root ~/webr
