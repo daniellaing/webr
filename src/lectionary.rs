@@ -26,7 +26,7 @@ pub enum Error {
     Easter(#[from] time::error::ComponentRange),
 
     #[error(transparent)]
-    TokioJoinError(#[from] tokio::task::JoinError),
+    TokioJoin(#[from] tokio::task::JoinError),
 }
 
 #[derive(Debug)]
@@ -41,7 +41,7 @@ pub async fn lectionary(state: State<AppState>) -> Response {
     let root = state.root.clone();
     spawn_blocking(|| lectionary_wrapped(state))
         .await
-        .map_err(Error::TokioJoinError)
+        .map_err(Error::TokioJoin)
         .and_then(|res| res)
         .unwrap_or_else(|err| build_error_page(root, err.into()))
 }
@@ -53,7 +53,7 @@ fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
     let lec_table = Table::builder()
         .table_head(|th| {
             th.table_row(|tr| {
-                tr.table_header(|thdr| thdr.text(format!("Date ({})", year)));
+                tr.table_header(|thdr| thdr.text(format!("Date ({year})")));
                 tr.table_header(|thdr| thdr.text("Morning").colspan("3"));
                 tr.table_header(|thdr| thdr.text("Evening").colspan("3"))
             })
@@ -61,7 +61,7 @@ fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
         .table_body(|tb| {
             for le in lec.iter() {
                 let dscr = match le.dscr {
-                    Some(d) => format!("<br>{}", d),
+                    Some(d) => format!("<br>{d}"),
                     None => String::new(),
                 };
                 let date = match le.date {
@@ -104,7 +104,7 @@ fn lectionary_wrapped(state: State<AppState>) -> R<Response> {
     let lec_today = Table::builder()
         .table_head(|th| {
             th.table_row(|tr| {
-                tr.table_header(|thdr| thdr.text(format!("Date ({})", year)));
+                tr.table_header(|thdr| thdr.text(format!("Date ({year})")));
                 tr.table_header(|thdr| thdr.text("Morning").colspan("3"));
                 tr.table_header(|thdr| thdr.text("Evening").colspan("3"))
             })

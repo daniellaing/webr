@@ -149,7 +149,7 @@ async fn get_file(State(state): State<AppState>, rel_path: PathBuf) -> R<Respons
 pub fn build_error_page(root: impl AsRef<std::path::Path>, err: Error) -> Response {
     PageTemplate::builder()
         .title("Daniel's Website")
-        .build(root, format!("{}<p>Error: {}</p>", ERROR_PAGE, err))
+        .build(root, format!("{ERROR_PAGE}<p>Error: {err}</p>"))
         .and_then(|ep| Ok(ep.render()?))
         .map(|ep| Html(ep).into_response())
         .unwrap_or((StatusCode::INTERNAL_SERVER_ERROR, Html(FALLBACK_ERROR)).into_response())

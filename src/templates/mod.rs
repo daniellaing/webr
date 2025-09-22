@@ -82,7 +82,7 @@ impl<T> PageTemplateBuilder<T> {
 impl PageTemplateBuilder<Title> {
     pub fn build(self, root: impl AsRef<Path>, content: impl Into<String>) -> R<PageTemplate> {
         let last_modified = match self.last_modified {
-            Some(d) => format!(r#"<p class="last_modified">Last updated: {}</p>"#, d),
+            Some(d) => format!(r#"<p class="last_modified">Last updated: {d}</p>"#),
             None => String::new(),
         };
         let tags = match self.tags {
