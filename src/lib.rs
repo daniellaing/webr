@@ -29,6 +29,7 @@ use tower_http::trace::TraceLayer;
 use tracing::{debug, trace};
 
 #[derive(Parser, Debug)]
+#[command(version, about)]
 pub struct Args {
     #[arg(short, long)]
     pub content: String,
