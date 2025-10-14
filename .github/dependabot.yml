@@ -11,6 +11,9 @@ updates:
       interval: "weekly"
     assignees:
       - daniellaing
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
