@@ -24,7 +24,7 @@ serde = { version = "1", features = ["derive"] }
 askama = "0.14"
 tower = "0.5"
 tokio-util = { version = "0.7", features = ["io"] }
-convert_case = "0.8"
+convert_case = "0.9"
 tokio-stream = { version = "0.1", features = ["fs"] }
 time = { version = "0.3", features = ["macros", "formatting"] }
 tracing = "0.1"
