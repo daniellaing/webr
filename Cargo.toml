@@ -21,7 +21,7 @@ pulldown-cmark = "0.12"
 pulldown-cmark-frontmatter = "0.4"
 toml = "0.9"
 serde = { version = "1", features = ["derive"] }
-askama = "0.14"
+askama = "0.15"
 tower = "0.5"
 tokio-util = { version = "0.7", features = ["io"] }
 convert_case = "0.8"
