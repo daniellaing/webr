@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Free disk space
-        uses: wimpysworld/nothing-but-nix@v6
+        uses: wimpysworld/nothing-but-nix@v9
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
