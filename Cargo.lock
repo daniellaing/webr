@@ -584,17 +584,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f86ba2052aebccc42cbbb3ed234b8b13ce76f75c3551a303cb2bcffcff12bb14"
 dependencies = [
  "bitflags",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark"
-version = "0.13.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c3a14896dfa883796f1cb410461aef38810ea05f2b2c33c5aded3649095fdad"
-dependencies = [
- "bitflags",
  "getopts",
  "memchr",
  "pulldown-cmark-escape",
@@ -613,7 +602,7 @@ version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49c897db7dac0f10814066f1b5176a130cc951feb33f1a2643bd3094203bd081"
 dependencies = [
- "pulldown-cmark 0.12.2",
+ "pulldown-cmark",
 ]
 
 [[package]]
@@ -822,9 +811,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.51.0"
+version = "1.52.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bd1c4c0fc4a7ab90fc15ef6daaa3ec3b893f004f915f2392557ed23237820cd"
+checksum = "b67dee974fe86fd92cc45b7a95fdd2f99a36a6d7b0d431a231178d3d670bbcc6"
 dependencies = [
  "libc",
  "mio",
@@ -1054,7 +1043,7 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "webr"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "anyhow",
  "askama",
@@ -1063,7 +1052,7 @@ dependencies = [
  "convert_case",
  "html",
  "natord",
- "pulldown-cmark 0.13.3",
+ "pulldown-cmark",
  "pulldown-cmark-frontmatter",
  "serde",
  "thiserror",
